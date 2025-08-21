@@ -1,19 +1,21 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { RoutinesPage } from "@/components/routines/RoutinesPage";
 import { Sidebar } from "@/components/common/Sidebar";
 import { useSidebar } from "@/hooks/useSidebar";
 import { navigationConfig, getActiveNavigationItem } from "@/config/navigation";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, ReactNode } from "react";
+
+interface AppLayoutProps {
+  children: ReactNode;
+}
 
 /**
- * DashboardLayout component - Main layout with reusable sidebar
- * Implements responsive design and modern navigation patterns
- * Follows copilot instructions: clean component composition
+ * AppLayout component - Root layout with sidebar for all pages
+ * Follows copilot instructions: clean and simple
  */
-export default function DashboardLayout() {
+export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const {
     isCollapsed,
@@ -26,24 +28,19 @@ export default function DashboardLayout() {
     persistCollapsedState: true,
   });
 
-  // Memoized navigation items with active state
+  // Navigation items with active state
   const navigationItems = useMemo(() => {
     const activeItem = getActiveNavigationItem(pathname);
-
     return navigationConfig.map((item) => ({
-      id: item.id,
-      label: item.label,
-      icon: item.icon,
-      href: item.href,
+      ...item,
       isActive: item.id === activeItem?.id,
       onClick: () => {
-        // Handle navigation - for now just log
-        console.log(`Navigate to ${item.href}`);
-        // In a real app, you'd use Next.js router here
-        // router.push(item.href);
+        if (isMobileMenuOpen) {
+          setMobileMenuOpen(false);
+        }
       },
     }));
-  }, [pathname]);
+  }, [pathname, isMobileMenuOpen, setMobileMenuOpen]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -74,7 +71,7 @@ export default function DashboardLayout() {
           <div className="w-9"></div> {/* Spacer for centering */}
         </div>
 
-        <RoutinesPage />
+        {children}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { RoutinesPage } from "@/components/routines/RoutinesPage";
 
 export default function Dashboard() {
-  return <DashboardLayout />;
+  return <RoutinesPage />;
 }

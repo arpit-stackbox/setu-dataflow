@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EpisodesTable } from "@/components/episodes/EpisodesTable";
 import { PaginationComponent } from "@/components/layout/PaginationComponent";
+import { SearchAndFilter } from "@/components/layout/SearchAndFilter";
 import { mockEpisodes } from "@/lib/mock-episodes";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
 
@@ -25,11 +26,29 @@ export function EpisodesPage({
   onBack,
 }: EpisodesPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedType, setSelectedType] = useState("All Types");
 
-  // Filter episodes by routine ID and memoize for performance
+  // Filter episodes by routine ID, search query, and type - memoized for performance
   const filteredEpisodes = useMemo(() => {
-    return mockEpisodes.filter((episode) => episode.routineId === routineId);
-  }, [routineId]);
+    return mockEpisodes.filter((episode) => {
+      const matchesRoutine = episode.routineId === routineId;
+      const matchesSearch =
+        episode.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        episode.status.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType =
+        selectedType === "All Types" || episode.status === selectedType;
+
+      return matchesRoutine && matchesSearch && matchesType;
+    });
+  }, [routineId, searchQuery, selectedType]);
+
+  // Handle filter changes
+  const handleFiltersChange = useCallback((query: string, type: string) => {
+    setSearchQuery(query);
+    setSelectedType(type);
+    setCurrentPage(1);
+  }, []);
 
   // Pagination logic - memoized for performance
   const paginatedEpisodes = useMemo(() => {
@@ -73,10 +92,13 @@ export function EpisodesPage({
         </div>
       </div>
 
-      {/* Episodes Table */}
+      {/* Search and Filter */}
+      <div className="mb-6">
+        <SearchAndFilter onFiltersChange={handleFiltersChange} />
+      </div>
+
       <EpisodesTable episodes={paginatedEpisodes} />
 
-      {/* Pagination */}
       <PaginationComponent
         currentPage={currentPage}
         totalItems={filteredEpisodes.length}

@@ -4,6 +4,7 @@ import "./globals.css";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { validateConfig } from "@/config";
 import { handleUncaughtError } from "@/lib/errors";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,7 +17,8 @@ export const metadata: Metadata = {
     default: "Setu DataFlow Operations",
     template: "%s | Setu DataFlow Operations",
   },
-  description: "Production-ready monitoring dashboard for Setu ETL routines and data operations",
+  description:
+    "Production-ready monitoring dashboard for Setu ETL routines and data operations",
   keywords: ["ETL", "Data Operations", "Monitoring", "Setu", "Dashboard"],
   authors: [{ name: "Setu Engineering Team" }],
   creator: "Setu",
@@ -37,7 +39,7 @@ export const metadata: Metadata = {
     title: "Setu DataFlow Operations",
     description: "Production-ready monitoring dashboard for Setu ETL routines",
   },
-  metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
 };
 
 export const viewport: Viewport = {
@@ -52,21 +54,21 @@ export const viewport: Viewport = {
 };
 
 // Validate configuration on startup
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   try {
     validateConfig();
   } catch (error) {
-    console.error('Configuration validation failed:', error);
-    if (process.env.NODE_ENV === 'production') {
+    console.error("Configuration validation failed:", error);
+    if (process.env.NODE_ENV === "production") {
       process.exit(1);
     }
   }
 }
 
 // Global error handlers
-if (typeof window === 'undefined') {
-  process.on('uncaughtException', handleUncaughtError);
-  process.on('unhandledRejection', (reason) => {
+if (typeof window === "undefined") {
+  process.on("uncaughtException", handleUncaughtError);
+  process.on("unhandledRejection", (reason) => {
     handleUncaughtError(new Error(`Unhandled Rejection: ${reason}`));
   });
 }
@@ -83,19 +85,19 @@ export default function RootLayout({
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-Frame-Options" content="DENY" />
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
-        
+
         {/* Performance hints */}
         <meta name="format-detection" content="telephone=no" />
       </head>
-      <body className={`${inter.className} min-h-screen bg-background font-sans antialiased`}>
+      <body
+        className={`${inter.className} min-h-screen bg-background font-sans antialiased`}
+      >
         <ErrorBoundary>
-          <div id="app-root">
-            {children}
-          </div>
+          <AppLayout>{children}</AppLayout>
         </ErrorBoundary>
-        
+
         {/* Development tools */}
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <div id="development-tools" />
         )}
       </body>
