@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -11,6 +12,7 @@ import {
 import { Episode } from "@/types/episode";
 import { STATUS_BADGE_CONFIG, DEFAULT_STATUS_BADGE } from "@/lib/constants";
 import { useCallback } from "react";
+import { RotateCcw, Eye, Play, Download } from "lucide-react";
 
 interface EpisodesTableProps {
   episodes: Episode[];
@@ -52,13 +54,39 @@ export function EpisodesTable({ episodes }: EpisodesTableProps) {
     return `${remainingSeconds}s`;
   }, []);
 
-  const formatDataSize = useCallback((sizeInMB?: number): string => {
-    if (!sizeInMB) return "-";
-    if (sizeInMB >= 1000) {
-      return `${(sizeInMB / 1000).toFixed(1)} GB`;
-    }
-    return `${sizeInMB} MB`;
-  }, []);
+  const formatDurationWithStatus = useCallback(
+    (episode: Episode): string => {
+      if (!episode.duration) return "-";
+
+      const formattedDuration = formatDuration(episode.duration);
+
+      if (episode.status === "Running") {
+        return `${formattedDuration} (ongoing)`;
+      }
+
+      return formattedDuration;
+    },
+    [formatDuration]
+  );
+
+  const formatRetryInfo = useCallback(
+    (retryInfo: Episode["retryInfo"]): string => {
+      return `${retryInfo.currentAttempt}/${retryInfo.maxAttempts}`;
+    },
+    []
+  );
+
+  const ProgressBar = useCallback(
+    ({ progress }: { progress: number }) => (
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div
+          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    ),
+    []
+  );
 
   return (
     <Card className="overflow-hidden">
@@ -73,7 +101,7 @@ export function EpisodesTable({ episodes }: EpisodesTableProps) {
                     Episode {episode.id}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatDateTime(episode.startTime)}
+                    {new Date(episode.startTime).toLocaleString()}
                   </p>
                 </div>
                 <Badge className={`ml-2 ${getStatusBadge(episode.status)}`}>
@@ -81,33 +109,71 @@ export function EpisodesTable({ episodes }: EpisodesTableProps) {
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="space-y-3">
                 <div>
-                  <span className="text-gray-500">Duration:</span>
-                  <span className="ml-1 font-medium">
-                    {formatDuration(episode.duration)}
-                  </span>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-500">Progress:</span>
+                    <span className="font-medium">{episode.progress}%</span>
+                  </div>
+                  <ProgressBar progress={episode.progress} />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {episode.steps.completed}/{episode.steps.total} steps
+                  </div>
                 </div>
-                <div>
-                  <span className="text-gray-500">Data:</span>
-                  <span className="ml-1 font-medium">
-                    {formatDataSize(episode.dataProcessed)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Records:</span>
-                  <span className="ml-1 font-medium">
-                    {episode.recordsProcessed?.toLocaleString() || "-"}
-                  </span>
-                </div>
-                {episode.errorMessage && (
-                  <div className="col-span-2">
-                    <span className="text-gray-500">Error:</span>
-                    <span className="ml-1 text-red-600 text-xs">
-                      {episode.errorMessage}
+
+                <div className="grid grid-cols-1 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500">Duration:</span>
+                    <span className="ml-1 font-medium">
+                      {formatDurationWithStatus(episode)}
                     </span>
                   </div>
-                )}
+                  <div>
+                    <span className="text-gray-500">Retry Info:</span>
+                    <div className="ml-1">
+                      <span className="font-medium">
+                        {formatRetryInfo(episode.retryInfo)}
+                      </span>
+                      {episode.retryInfo.nextRetryAt && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Next:{" "}
+                          {new Date(
+                            episode.retryInfo.nextRetryAt
+                          ).toLocaleTimeString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {episode.errorDetails && (
+                    <div>
+                      <span className="text-gray-500">Error:</span>
+                      <div
+                        className="ml-1 text-red-600 text-xs block mt-1 leading-relaxed"
+                        title={episode.errorDetails}
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {episode.errorDetails}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    title="Download Payload"
+                  >
+                    <Download className="w-3 h-3 mr-1" />
+                    Payload
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
@@ -119,29 +185,26 @@ export function EpisodesTable({ episodes }: EpisodesTableProps) {
         <Table>
           <TableHeader className="bg-gray-50">
             <TableRow>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[100px]">
-                Episode ID
+              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[80px]">
+                Episode
               </TableHead>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[120px]">
+              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[100px]">
                 Status
               </TableHead>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[160px]">
-                Start Time
+              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[120px]">
+                Progress
               </TableHead>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[160px]">
-                End Time
+              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[200px]">
+                Error Details
               </TableHead>
               <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[100px]">
                 Duration
               </TableHead>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[120px]">
-                Data Processed
+              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[100px]">
+                Retry Info
               </TableHead>
               <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[120px]">
-                Records
-              </TableHead>
-              <TableHead className="text-gray-900 text-sm lg:text-base py-3 lg:py-4 min-w-[200px]">
-                Error Message
+                Actions
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -151,31 +214,72 @@ export function EpisodesTable({ episodes }: EpisodesTableProps) {
                 key={episode.id}
                 className="border-b border-gray-100 hover:bg-gray-50/50"
               >
-                <TableCell className="py-3 lg:py-4 font-medium text-blue-600">
-                  {episode.id}
+                <TableCell className="py-3 lg:py-4">
+                  <div className="space-y-1">
+                    <div className="font-medium text-blue-600">
+                      #{episode.id}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(episode.startTime).toLocaleString()}
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="py-3 lg:py-4">
                   <Badge className={getStatusBadge(episode.status)}>
                     {episode.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="py-3 lg:py-4 text-sm text-gray-600">
-                  {formatDateTime(episode.startTime)}
+                <TableCell className="py-3 lg:py-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span>{episode.progress}%</span>
+                    </div>
+                    <ProgressBar progress={episode.progress} />
+                    <div className="text-xs text-gray-500">
+                      {episode.steps.completed}/{episode.steps.total} steps
+                    </div>
+                  </div>
                 </TableCell>
-                <TableCell className="py-3 lg:py-4 text-sm text-gray-600">
-                  {episode.endTime ? formatDateTime(episode.endTime) : "-"}
+                <TableCell className="py-3 lg:py-4 text-sm text-red-600 max-w-[200px]">
+                  <div
+                    className="line-clamp-3 leading-relaxed"
+                    title={episode.errorDetails}
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {episode.errorDetails || "-"}
+                  </div>
                 </TableCell>
                 <TableCell className="py-3 lg:py-4 text-sm text-gray-900 font-medium">
-                  {formatDuration(episode.duration)}
+                  {formatDurationWithStatus(episode)}
                 </TableCell>
                 <TableCell className="py-3 lg:py-4 text-sm text-gray-600">
-                  {formatDataSize(episode.dataProcessed)}
+                  <div className="space-y-1">
+                    <div>{formatRetryInfo(episode.retryInfo)}</div>
+                    {episode.retryInfo.nextRetryAt && (
+                      <div className="text-xs text-blue-600">
+                        Next:{" "}
+                        {new Date(
+                          episode.retryInfo.nextRetryAt
+                        ).toLocaleTimeString()}
+                      </div>
+                    )}
+                  </div>
                 </TableCell>
-                <TableCell className="py-3 lg:py-4 text-sm text-gray-600">
-                  {episode.recordsProcessed?.toLocaleString() || "-"}
-                </TableCell>
-                <TableCell className="py-3 lg:py-4 text-sm text-red-600 max-w-[200px] truncate">
-                  {episode.errorMessage || "-"}
+                <TableCell className="py-3 lg:py-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-3 text-xs"
+                    title="Download Payload"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Payload
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

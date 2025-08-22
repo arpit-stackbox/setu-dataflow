@@ -9,9 +9,17 @@ export interface Episode {
   startTime: string;
   endTime?: string;
   duration?: number; // in milliseconds
-  errorMessage?: string;
-  dataProcessed?: number;
-  recordsProcessed?: number;
+  progress: number; // percentage 0-100
+  steps: {
+    completed: number;
+    total: number;
+  };
+  errorDetails?: string;
+  retryInfo: {
+    currentAttempt: number;
+    maxAttempts: number;
+    nextRetryAt?: string;
+  };
   routineId: string;
   routineName: string;
 }

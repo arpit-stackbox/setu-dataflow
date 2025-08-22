@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EpisodesTable } from "@/components/episodes/EpisodesTable";
 import { PaginationComponent } from "@/components/layout/PaginationComponent";
-import { SearchAndFilter } from "@/components/layout/SearchAndFilter";
+import { EpisodeSearchAndFilter } from "@/components/episodes/EpisodeSearchAndFilter";
 import { mockEpisodes } from "@/lib/mock-episodes";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
 
@@ -28,8 +28,11 @@ export function EpisodesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All Types");
+  const [dateRange, setDateRange] = useState<
+    { start: string; end: string } | undefined
+  >();
 
-  // Filter episodes by routine ID, search query, and type - memoized for performance
+  // Filter episodes by routine ID, search query, type, and date range - memoized for performance
   const filteredEpisodes = useMemo(() => {
     return mockEpisodes.filter((episode) => {
       const matchesRoutine = episode.routineId === routineId;
@@ -39,16 +42,35 @@ export function EpisodesPage({
       const matchesType =
         selectedType === "All Types" || episode.status === selectedType;
 
-      return matchesRoutine && matchesSearch && matchesType;
-    });
-  }, [routineId, searchQuery, selectedType]);
+      // Date range filtering
+      const matchesDateRange =
+        !dateRange ||
+        (() => {
+          const episodeDate = new Date(episode.startTime);
+          const startDate = new Date(dateRange.start);
+          const endDate = new Date(dateRange.end);
+          endDate.setHours(23, 59, 59, 999); // Include the entire end date
+          return episodeDate >= startDate && episodeDate <= endDate;
+        })();
 
-  // Handle filter changes
-  const handleFiltersChange = useCallback((query: string, type: string) => {
-    setSearchQuery(query);
-    setSelectedType(type);
-    setCurrentPage(1);
-  }, []);
+      return matchesRoutine && matchesSearch && matchesType && matchesDateRange;
+    });
+  }, [routineId, searchQuery, selectedType, dateRange]);
+
+  // Handle filter changes including date range
+  const handleFiltersChange = useCallback(
+    (
+      query: string,
+      type: string,
+      newDateRange?: { start: string; end: string }
+    ) => {
+      setSearchQuery(query);
+      setSelectedType(type);
+      setDateRange(newDateRange);
+      setCurrentPage(1);
+    },
+    []
+  );
 
   // Pagination logic - memoized for performance
   const paginatedEpisodes = useMemo(() => {
@@ -74,12 +96,11 @@ export function EpisodesPage({
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            size="sm"
+            size="default"
             onClick={handleBack}
-            className="flex items-center gap-2 hover:bg-gray-50"
+            className="p-2 hover:bg-gray-50"
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
+            <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
@@ -94,7 +115,7 @@ export function EpisodesPage({
 
       {/* Search and Filter */}
       <div className="mb-6">
-        <SearchAndFilter onFiltersChange={handleFiltersChange} />
+        <EpisodeSearchAndFilter onFiltersChange={handleFiltersChange} />
       </div>
 
       <EpisodesTable episodes={paginatedEpisodes} />
