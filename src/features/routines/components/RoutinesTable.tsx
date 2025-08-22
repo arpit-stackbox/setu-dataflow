@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Routine } from "@/types/routine";
+import { Routine } from "../types/routine";
 import {
   STATUS_BADGE_CONFIG,
   TYPE_BADGE_CONFIG,

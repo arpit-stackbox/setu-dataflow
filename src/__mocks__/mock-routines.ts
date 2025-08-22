@@ -1,4 +1,4 @@
-import { Routine } from '@/types/routine';
+import { Routine } from '@/features/routines/types/routine';
 import { DashboardMetrics } from '@/types';
 
 export const mockMetrics: DashboardMetrics = {

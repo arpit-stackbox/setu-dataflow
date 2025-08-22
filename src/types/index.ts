@@ -18,4 +18,4 @@ export interface PaginatedResponse<T> {
 }
 
 // Re-export routine types for convenience
-export type { RoutineStatus, RoutineType, Routine, RoutineExecution } from './routine';
+export type { RoutineStatus, RoutineType, Routine, RoutineExecution } from '@/features/routines/types/routine';

@@ -1,4 +1,4 @@
-import { Episode } from '@/types/episode';
+import { Episode } from '@/features/episodes/types/episode';
 
 export const mockEpisodes: Episode[] = [
   {

@@ -1,19 +1,24 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { mockRoutines } from "@/lib/mock-routines";
-import { Routine } from "@/types/routine";
+import { Routine } from "../types/routine";
+import { RoutinesResponse } from "../routines-api";
 import { RoutinesTable } from "./RoutinesTable";
-import { SearchAndFilter } from "../layout/SearchAndFilter";
-import { PaginationComponent } from "../layout/PaginationComponent";
+import { SearchAndFilter } from "@/components/layout/SearchAndFilter";
+import { PaginationComponent } from "@/components/layout/PaginationComponent";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
 
+interface RoutinesViewProps {
+  initialData: RoutinesResponse;
+  routineTypes: string[];
+}
+
 /**
- * RoutinesPage component - Main page for routine management
- * Follows copilot instructions: under 200 lines, simple and focused
+ * RoutinesView - Client Component for interactive functionality
+ * Handles search, filtering, and pagination with client-side state
  */
-export function RoutinesPage() {
+export function RoutinesView({ initialData }: RoutinesViewProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All Types");
@@ -29,15 +34,16 @@ export function RoutinesPage() {
 
   // Filter routines - memoized for performance
   const filteredRoutines = useMemo(() => {
-    return mockRoutines.filter((routine) => {
+    return initialData.routines.filter((routine) => {
       const matchesSearch =
+        searchQuery === "" ||
         routine.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         routine.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType =
         selectedType === "All Types" || routine.type === selectedType;
       return matchesSearch && matchesType;
     });
-  }, [searchQuery, selectedType]);
+  }, [initialData.routines, searchQuery, selectedType]);
 
   // Handle filter changes
   const handleFiltersChange = useCallback((query: string, type: string) => {
@@ -54,13 +60,7 @@ export function RoutinesPage() {
   }, [filteredRoutines, currentPage]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
-          Operations
-        </h1>
-      </div>
-
+    <>
       <SearchAndFilter onFiltersChange={handleFiltersChange} />
 
       <RoutinesTable
@@ -73,6 +73,6 @@ export function RoutinesPage() {
         totalItems={filteredRoutines.length}
         onPageChange={setCurrentPage}
       />
-    </div>
+    </>
   );
 }
