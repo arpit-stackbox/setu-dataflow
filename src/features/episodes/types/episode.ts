@@ -22,6 +22,15 @@ export interface Episode {
   };
   routineId: string;
   routineName: string;
+  payloadFiles?: PayloadFile[];
+}
+
+export interface PayloadFile {
+  id: string;
+  name: string;
+  size: number; // in bytes
+  type: 'input' | 'output' | 'error';
+  downloadUrl: string;
 }
 
 export interface EpisodeFilters {

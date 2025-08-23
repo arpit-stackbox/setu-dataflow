@@ -18,6 +18,22 @@ export const mockEpisodes: Episode[] = [
     },
     routineId: '1',
     routineName: 'Customer Data Sync',
+    payloadFiles: [
+      {
+        id: 'input-1',
+        name: 'customer_sync_payload_20240528.json',
+        size: 2048576, // 2MB
+        type: 'input',
+        downloadUrl: '/api/download/customer_sync_payload_20240528.json',
+      },
+      {
+        id: 'output-1',
+        name: 'sync_results_20240528.json',
+        size: 1024000, // 1MB
+        type: 'output',
+        downloadUrl: '/api/download/sync_results_20240528.json',
+      },
+    ],
   },
   {
     id: '2',
@@ -37,6 +53,22 @@ export const mockEpisodes: Episode[] = [
     },
     routineId: '1',
     routineName: 'Customer Data Sync',
+    payloadFiles: [
+      {
+        id: 'input-2',
+        name: 'customer_sync_payload_20240528_failed.json',
+        size: 1536000, // 1.5MB
+        type: 'input',
+        downloadUrl: '/api/download/customer_sync_payload_20240528_failed.json',
+      },
+      {
+        id: 'error-2',
+        name: 'error_log_20240528.txt',
+        size: 8192, // 8KB
+        type: 'error',
+        downloadUrl: '/api/download/error_log_20240528.txt',
+      },
+    ],
   },
   {
     id: '3',
@@ -55,6 +87,15 @@ export const mockEpisodes: Episode[] = [
     },
     routineId: '1',
     routineName: 'Customer Data Sync',
+    payloadFiles: [
+      {
+        id: 'input-3',
+        name: 'customer_sync_payload_20240528_1200.json',
+        size: 3145728, // 3MB
+        type: 'input',
+        downloadUrl: '/api/download/customer_sync_payload_20240528_1200.json',
+      },
+    ],
   },
   {
     id: '4',

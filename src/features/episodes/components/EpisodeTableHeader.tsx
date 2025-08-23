@@ -8,6 +8,9 @@ export function EpisodeTableHeader() {
   return (
     <TableHeader className="bg-gray-50/50">
       <TableRow className="border-gray-200">
+        <TableHead className="font-semibold text-gray-700 py-3 lg:py-4 w-10">
+          {/* Empty header for expand/collapse column */}
+        </TableHead>
         <TableHead className="font-semibold text-gray-700 py-3 lg:py-4">
           Episode
         </TableHead>
