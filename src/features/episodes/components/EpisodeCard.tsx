@@ -11,7 +11,7 @@ import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
 import { RetryInfoCard } from "./RetryInfoCard";
 import { FullErrorDetailsCard } from "./FullErrorDetailsCard";
-import { PayloadDownloadModal } from "./PayloadDownloadModal";
+import { PayloadDownloadModal } from "./modal/PayloadDownloadModal";
 
 interface EpisodeCardProps {
   episode: Episode;
