@@ -11,19 +11,18 @@ import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
 import { RetryInfoCard } from "./RetryInfoCard";
 import { FullErrorDetailsCard } from "./FullErrorDetailsCard";
-import { PayloadDownloadModal } from "./modal/PayloadDownloadModal";
 
 interface EpisodeCardProps {
   episode: Episode;
+  onOpenModal: (episode: Episode) => void;
 }
 
 /**
  * EpisodeCard component - Mobile card view for episodes
  * Displays episode information in a compact card format with expandable details
  */
-export function EpisodeCard({ episode }: EpisodeCardProps) {
+export function EpisodeCard({ episode, onOpenModal }: EpisodeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false);
 
   const getStatusBadge = (status: string): string => {
     return STATUS_BADGE_CONFIG.get(status) || DEFAULT_STATUS_BADGE;
@@ -34,7 +33,7 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
   };
 
   const handlePayloadDownload = () => {
-    setIsPayloadModalOpen(true);
+    onOpenModal(episode);
   };
 
   return (
@@ -150,13 +149,6 @@ export function EpisodeCard({ episode }: EpisodeCardProps) {
           <FullErrorDetailsCard episode={episode} />
         </div>
       )}
-
-      {/* Payload Download Modal */}
-      <PayloadDownloadModal
-        episode={episode}
-        isOpen={isPayloadModalOpen}
-        onClose={() => setIsPayloadModalOpen(false)}
-      />
     </div>
   );
 }

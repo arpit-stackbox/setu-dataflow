@@ -12,19 +12,21 @@ import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
 import { RetryInfoCard } from "./RetryInfoCard";
 import { FullErrorDetailsCard } from "./FullErrorDetailsCard";
-import { PayloadDownloadModal } from "./modal/PayloadDownloadModal";
 
 interface EpisodeTableRowProps {
   episode: Episode;
+  onOpenModal: (episode: Episode) => void;
 }
 
 /**
  * EpisodeTableRow component - Desktop table row for episodes
  * Displays episode information in table format with expandable details
  */
-export function EpisodeTableRow({ episode }: EpisodeTableRowProps) {
+export function EpisodeTableRow({
+  episode,
+  onOpenModal,
+}: EpisodeTableRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isPayloadModalOpen, setIsPayloadModalOpen] = useState(false);
 
   const getStatusBadge = (status: string): string => {
     return STATUS_BADGE_CONFIG.get(status) || DEFAULT_STATUS_BADGE;
@@ -35,7 +37,7 @@ export function EpisodeTableRow({ episode }: EpisodeTableRowProps) {
   };
 
   const handlePayloadDownload = () => {
-    setIsPayloadModalOpen(true);
+    onOpenModal(episode);
   };
 
   return (
@@ -158,13 +160,6 @@ export function EpisodeTableRow({ episode }: EpisodeTableRowProps) {
           </TableCell>
         </TableRow>
       )}
-
-      {/* Payload Download Modal */}
-      <PayloadDownloadModal
-        episode={episode}
-        isOpen={isPayloadModalOpen}
-        onClose={() => setIsPayloadModalOpen(false)}
-      />
     </>
   );
 }

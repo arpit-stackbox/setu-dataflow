@@ -7,6 +7,7 @@ import { EpisodeTableHeader } from "./EpisodeTableHeader";
 import { EpisodeTableRow } from "./EpisodeTableRow";
 import { EpisodeCard } from "./EpisodeCard";
 import { EpisodeSearchAndFilter } from "./EpisodeSearchAndFilter";
+import { PayloadDownloadModal } from "./modal/PayloadDownloadModal";
 
 interface EpisodesTableProps {
   episodes: Episode[];
@@ -25,6 +26,22 @@ export function EpisodesTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All Types");
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>();
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    episode: Episode | null;
+  }>({
+    isOpen: false,
+    episode: null,
+  });
+
+  // Handle modal open/close
+  const handleOpenModal = useCallback((episode: Episode) => {
+    setModalState({ isOpen: true, episode });
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setModalState({ isOpen: false, episode: null });
+  }, []);
 
   // Handle filter changes from search component
   const handleFiltersChange = useCallback(
@@ -62,47 +79,66 @@ export function EpisodesTable({
   }, [episodes, searchQuery, selectedType, dateRange]);
 
   return (
-    <div className="space-y-6">
-      {/* Search and Filter Controls - always show for consistent page structure */}
-      <EpisodeSearchAndFilter onFiltersChange={handleFiltersChange} />
+    <>
+      <div className="space-y-6">
+        {/* Search and Filter Controls - always show for consistent page structure */}
+        <EpisodeSearchAndFilter onFiltersChange={handleFiltersChange} />
 
-      {/* Desktop Table View */}
-      <div className="hidden lg:block rounded-lg border border-gray-200 bg-white shadow-sm">
-        <Table>
-          <EpisodeTableHeader />
-          <TableBody>
-            {filteredEpisodes.map((episode) => (
-              <EpisodeTableRow key={episode.id} episode={episode} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Mobile Card View */}
-      <div className="lg:hidden space-y-4">
-        {filteredEpisodes.map((episode) => (
-          <EpisodeCard key={episode.id} episode={episode} />
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredEpisodes.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          {hasAnyEpisodes ? (
-            <>
-              <p className="text-lg font-medium">No episodes found</p>
-              <p className="text-sm">Try adjusting your search criteria</p>
-            </>
-          ) : (
-            <>
-              <p className="text-lg font-medium">No episodes yet</p>
-              <p className="text-sm">
-                This routine hasn&apos;t run any episodes
-              </p>
-            </>
-          )}
+        {/* Desktop Table View */}
+        <div className="hidden lg:block rounded-lg border border-gray-200 bg-white shadow-sm">
+          <Table>
+            <EpisodeTableHeader />
+            <TableBody>
+              {filteredEpisodes.map((episode) => (
+                <EpisodeTableRow
+                  key={episode.id}
+                  episode={episode}
+                  onOpenModal={handleOpenModal}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-4">
+          {filteredEpisodes.map((episode) => (
+            <EpisodeCard
+              key={episode.id}
+              episode={episode}
+              onOpenModal={handleOpenModal}
+            />
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {filteredEpisodes.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            {hasAnyEpisodes ? (
+              <>
+                <p className="text-lg font-medium">No episodes found</p>
+                <p className="text-sm">Try adjusting your search criteria</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium">No episodes yet</p>
+                <p className="text-sm">
+                  This routine hasn&apos;t run any episodes
+                </p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal rendered outside table structure */}
+      {modalState.episode && (
+        <PayloadDownloadModal
+          episode={modalState.episode}
+          isOpen={modalState.isOpen}
+          onClose={handleCloseModal}
+        />
       )}
-    </div>
+    </>
   );
 }
