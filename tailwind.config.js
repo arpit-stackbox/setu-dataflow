@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const { fontFamily } = require("tailwindcss/defaultTheme");
+
 module.exports = {
     darkMode: ['class'],
     content: [
@@ -9,6 +11,11 @@ module.exports = {
   ],
   theme: {
   	extend: {
+  		fontFamily: {
+  			sans: ["var(--font-averta)", "var(--font-inter)", ...fontFamily.sans],
+  			averta: ["var(--font-averta)", ...fontFamily.sans],
+  			inter: ["var(--font-inter)", ...fontFamily.sans],
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

@@ -111,4 +111,30 @@
   .responsive-py {
     @apply py-4 sm:py-6 lg:py-8;
   }
+
+  /* Font utilities for Averta */
+  .font-averta-light {
+    font-family: var(--font-averta);
+    font-weight: 300;
+  }
+
+  .font-averta-regular {
+    font-family: var(--font-averta);
+    font-weight: 400;
+  }
+
+  .font-averta-semibold {
+    font-family: var(--font-averta);
+    font-weight: 600;
+  }
+
+  .font-averta-bold {
+    font-family: var(--font-averta);
+    font-weight: 700;
+  }
+
+  .font-averta-extrabold {
+    font-family: var(--font-averta);
+    font-weight: 800;
+  }
 }
