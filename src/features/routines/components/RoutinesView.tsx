@@ -6,7 +6,7 @@ import { Routine } from "../types/routine";
 import { RoutinesResponse } from "../routines-api";
 import { RoutinesTable } from "./RoutinesTable";
 import { SearchAndFilter } from "@/components/layout/SearchAndFilter";
-import { PaginationComponent } from "@/components/layout/PaginationComponent";
+import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
 
 interface RoutinesViewProps {
@@ -63,15 +63,18 @@ export function RoutinesView({ initialData }: RoutinesViewProps) {
     <>
       <SearchAndFilter onFiltersChange={handleFiltersChange} />
 
+      {/* Top pagination - Gmail style */}
+      <div className="flex justify-end mb-4">
+        <CompactPaginationComponent
+          currentPage={currentPage}
+          totalItems={filteredRoutines.length}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
       <RoutinesTable
         routines={paginatedRoutines}
         onRoutineClick={handleRoutineClick}
-      />
-
-      <PaginationComponent
-        currentPage={currentPage}
-        totalItems={filteredRoutines.length}
-        onPageChange={setCurrentPage}
       />
     </>
   );

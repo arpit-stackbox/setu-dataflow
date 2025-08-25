@@ -40,8 +40,6 @@ export function formatFileSize(bytes: number): string {
 export function getFileTypeColor(type: PayloadFile["type"]): string {
   const colorMap: Record<PayloadFile["type"], string> = {
     input: "text-blue-600 bg-blue-50",
-    output: "text-green-600 bg-green-50",
-    error: "text-red-600 bg-red-50",
   };
   
   return colorMap[type] || "text-gray-600 bg-gray-50";

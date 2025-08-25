@@ -92,17 +92,19 @@ export function RoutinesTable({
                     {routine.type}
                   </Badge>
                 </div>
-                {routine.failedEpisodes > 0 && (
-                  <div>
-                    <span className="text-gray-500">Failed:</span>
+                <div>
+                  <span className="text-gray-500">Failed:</span>
+                  {routine.failedEpisodes === 0 ? (
+                    <span className="ml-1 text-gray-500">None</span>
+                  ) : (
                     <Badge
                       variant="destructive"
                       className="ml-1 rounded-full w-6 h-6 p-0 flex items-center justify-center"
                     >
                       {routine.failedEpisodes}
                     </Badge>
-                  </div>
-                )}
+                  )}
+                </div>
                 <div className="col-span-2">
                   <span className="text-gray-500">Last Run:</span>
                   <span className="ml-1 text-gray-500">
@@ -177,7 +179,9 @@ export function RoutinesTable({
                   {formatDateTime(routine.lastRun)}
                 </TableCell>
                 <TableCell className="py-3 lg:py-4">
-                  {routine.failedEpisodes > 0 && (
+                  {routine.failedEpisodes === 0 ? (
+                    <span className="text-sm text-gray-500">None</span>
+                  ) : (
                     <Badge
                       variant="destructive"
                       className="rounded-full w-6 h-6 p-0 flex items-center justify-center"

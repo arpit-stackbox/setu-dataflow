@@ -29,7 +29,7 @@ export interface PayloadFile {
   id: string;
   name: string;
   size: number; // in bytes
-  type: 'input' | 'output' | 'error';
+  type: 'input';
   downloadUrl: string;
 }
 

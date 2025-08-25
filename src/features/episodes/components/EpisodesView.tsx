@@ -5,8 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EpisodesResponse } from "../episodes-api";
 import { EpisodesTable } from "./EpisodesTable";
-import { PaginationComponent } from "@/components/layout/PaginationComponent";
-import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
+import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
+import { DEFAULT_EPISODES_PER_PAGE } from "@/lib/constants";
 
 interface EpisodesViewProps {
   initialData: EpisodesResponse;
@@ -31,8 +31,8 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
 
   // Filter episodes by current page for pagination
   const paginatedEpisodes = useMemo(() => {
-    const startIndex = (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE;
-    const endIndex = startIndex + DEFAULT_ITEMS_PER_PAGE;
+    const startIndex = (currentPage - 1) * DEFAULT_EPISODES_PER_PAGE;
+    const endIndex = startIndex + DEFAULT_EPISODES_PER_PAGE;
     return initialData.episodes.slice(startIndex, endIndex);
   }, [initialData.episodes, currentPage]);
 
@@ -60,17 +60,20 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
         </div>
       </div>
 
+      {/* Compact pagination - Gmail style */}
+      <div className="flex justify-end mb-4">
+        <CompactPaginationComponent
+          currentPage={currentPage}
+          totalItems={initialData.totalCount}
+          onPageChange={setCurrentPage}
+          itemsPerPage={DEFAULT_EPISODES_PER_PAGE}
+        />
+      </div>
+
       {/* Episodes Table with built-in search and filtering */}
       <EpisodesTable
         episodes={paginatedEpisodes}
         hasAnyEpisodes={initialData.totalCount > 0}
-      />
-
-      {/* Pagination - always show for consistent page structure */}
-      <PaginationComponent
-        currentPage={currentPage}
-        totalItems={initialData.totalCount}
-        onPageChange={setCurrentPage}
       />
     </>
   );

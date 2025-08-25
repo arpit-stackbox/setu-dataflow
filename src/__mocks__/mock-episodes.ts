@@ -27,10 +27,10 @@ export const mockEpisodes: Episode[] = [
         downloadUrl: '/api/download/customer_sync_payload_20240528.json',
       },
       {
-        id: 'output-1',
+        id: 'input-2',
         name: 'sync_results_20240528.json',
         size: 1024000, // 1MB
-        type: 'output',
+        type: 'input',
         downloadUrl: '/api/download/sync_results_20240528.json',
       },
     ],
@@ -62,10 +62,10 @@ export const mockEpisodes: Episode[] = [
         downloadUrl: '/api/download/customer_sync_payload_20240528_failed.json',
       },
       {
-        id: 'error-2',
+        id: 'input4-2',
         name: 'error_log_20240528.txt',
         size: 8192, // 8KB
-        type: 'error',
+        type: 'input',
         downloadUrl: '/api/download/error_log_20240528.txt',
       },
     ],

@@ -36,7 +36,8 @@ export const TYPE_BADGE_CONFIG = new Map<string, string>([
 ]);
 
 // Application configuration constants
-export const DEFAULT_ITEMS_PER_PAGE = 5;
+export const DEFAULT_ITEMS_PER_PAGE = 10;
+export const DEFAULT_EPISODES_PER_PAGE = 50;
 
 // Default badge styles for fallback
 export const DEFAULT_STATUS_BADGE = "bg-gray-100 text-gray-800";

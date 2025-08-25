@@ -124,12 +124,37 @@ if (typeof window === "undefined") {
   }
 }
 
-// Global error handlers
+// Global error handlers - avoid duplicate listeners in development
 if (typeof window === "undefined") {
-  process.on("uncaughtException", handleUncaughtError);
-  process.on("unhandledRejection", (reason) => {
-    handleUncaughtError(new Error(`Unhandled Rejection: ${reason}`));
-  });
+  // Check if we already have our custom error handlers to avoid duplicates
+  const existingUncaughtListeners = process.listeners("uncaughtException");
+  const existingRejectionListeners = process.listeners("unhandledRejection");
+
+  // Only add if our handlers aren't already registered
+  const hasCustomUncaughtHandler = existingUncaughtListeners.some(
+    (listener) =>
+      listener.name === "handleUncaughtError" ||
+      listener === handleUncaughtError
+  );
+
+  const hasCustomRejectionHandler = existingRejectionListeners.some(
+    (listener) => listener.toString().includes("handleUncaughtError")
+  );
+
+  if (!hasCustomUncaughtHandler) {
+    process.on("uncaughtException", handleUncaughtError);
+  }
+
+  if (!hasCustomRejectionHandler) {
+    process.on("unhandledRejection", (reason) => {
+      handleUncaughtError(new Error(`Unhandled Rejection: ${reason}`));
+    });
+  }
+
+  // Increase max listeners to handle hot reloading in development
+  if (process.env.NODE_ENV === "development") {
+    process.setMaxListeners(20);
+  }
 }
 
 export default function RootLayout({

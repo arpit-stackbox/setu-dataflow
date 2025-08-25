@@ -26,7 +26,7 @@ export function FileSelectionSection({
       {/* Select All Header */}
       <div className="flex items-center justify-between border-b pb-2">
         <label className="text-sm font-medium text-gray-700">
-          Input Payload Files:
+          Payload files:
         </label>
         <Button
           variant="ghost"
