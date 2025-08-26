@@ -4,7 +4,7 @@
  */
 
 import { apiConfig } from '@/config/api';
-import { RoutinesApiServiceResponse, RoutinesApiResponse, EpisodesApiResponse, ApiEpisodeItem } from '../types/api-types';
+import { RoutinesApiServiceResponse, RoutinesApiResponse, EpisodesApiResponse, ApiEpisodeItem, isEpisodeFailed } from '../types/api-types';
 
 export class RoutinesApiClient {
   private baseUrl: string;
@@ -84,19 +84,22 @@ export class RoutinesApiClient {
   }
 
   /**
-   * Fetch latest episode for a specific routine
+   * Optimized method: Fetch both latest episode and failed count from a single API call
+   * Uses recency_limit to get episodes from last 7 days, then extracts both pieces of data
    */
-  async getLatestEpisode(routineId: string): Promise<ApiEpisodeItem | null> {
+  async getEpisodeDataForRoutine(
+    routineId: string, 
+    recencyLimitSeconds: number = 604800
+  ): Promise<{ latestEpisode: ApiEpisodeItem | null; failedCount: number }> {
     const searchParams = new URLSearchParams({
-      limit: '1',
       offset: '0',
       reverse: 'true',
+      recency_limit: String(recencyLimitSeconds), // 604800 = 7 days in seconds
     });
 
     const url = `${this.baseUrl}/api/routines/${routineId}/episodes?${searchParams}`;
 
     try {
-      // Make the API call
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -107,79 +110,92 @@ export class RoutinesApiClient {
 
       if (!response.ok) {
         if (response.status === 404) {
-          // No episodes found for this routine
-          return null;
+          return { latestEpisode: null, failedCount: 0 };
         }
         throw new Error(`API call failed: ${response.status} ${response.statusText}`);
       }
 
-      // Parse response body (array of episodes)
       const episodes: EpisodesApiResponse = await response.json();
       
-      // Return the latest episode (first in reversed list) or null
+      // Get latest episode (first in reversed list)
       const latestEpisode = episodes.length > 0 ? episodes[0] : null;
+      
+      // Count failed episodes using the shared logic
+      const failedCount = episodes.filter(isEpisodeFailed).length;
 
-      // Log success in development
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Routines API] GET ${url} → ${response.status} (latest episode: ${latestEpisode?.id || 'none'})`);
+        console.log(`[Routines API] GET ${url} → ${response.status} (latest: ${latestEpisode?.id?.slice(-8) || 'none'}, ${failedCount} failed out of ${episodes.length})`);
       }
 
-      return latestEpisode;
+      return { latestEpisode, failedCount };
     } catch (error) {
-      // Log error
       console.error(`[Routines API] GET ${url} → Error:`, error);
-      
-      // Return null instead of throwing for episodes (non-critical)
-      return null;
+      return { latestEpisode: null, failedCount: 0 };
     }
   }
 
   /**
-   * Fetch latest episodes for current page routines (typically 10 routines)
-   * All requests run in parallel for maximum performance
+   * Optimized batch method: Fetch episode data for multiple routines with single API call per routine
+   * Returns both latest episodes and failed counts efficiently
    */
-  async getLatestEpisodesForRoutines(routineIds: string[]): Promise<Map<string, ApiEpisodeItem>> {
+  async getEpisodeDataForRoutines(
+    routineIds: string[], 
+    recencyLimitSeconds: number = 604800,
+    maxConcurrency: number = 5
+  ): Promise<{
+    episodeMap: Map<string, ApiEpisodeItem>;
+    failedCountsMap: Map<string, number>;
+  }> {
     const episodeMap = new Map<string, ApiEpisodeItem>();
+    const failedCountsMap = new Map<string, number>();
 
     if (routineIds.length === 0) {
-      return episodeMap;
+      return { episodeMap, failedCountsMap };
     }
 
     const startTime = Date.now();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Routines API] Fetching episodes for ${routineIds.length} routines in parallel`);
+      console.log(`[Routines API] Fetching episode data for ${routineIds.length} routines (optimized: 1 call per routine)`);
     }
 
-    // Execute all episode requests in parallel
-    const promises = routineIds.map(async (routineId) => {
-      try {
-        const episode = await this.getLatestEpisode(routineId);
-        return { routineId, episode, success: true };
-      } catch (error) {
-        console.error(`[Routines API] Failed to fetch episode for routine ${routineId}:`, error);
-        return { routineId, episode: null, success: false };
-      }
-    });
+    // Process in batches to avoid overwhelming the API
+    const batches: string[][] = [];
+    for (let i = 0; i < routineIds.length; i += maxConcurrency) {
+      batches.push(routineIds.slice(i, i + maxConcurrency));
+    }
 
-    // Wait for all requests to complete
-    const results = await Promise.all(promises);
-    
-    // Process results
-    let successCount = 0;
-    results.forEach(({ routineId, episode, success }) => {
-      if (episode) {
-        episodeMap.set(routineId, episode);
-        successCount++;
-      }
-    });
+    for (const batch of batches) {
+      const promises = batch.map(async (routineId) => {
+        try {
+          const data = await this.getEpisodeDataForRoutine(routineId, recencyLimitSeconds);
+          return { routineId, data, success: true };
+        } catch (error) {
+          console.error(`[Routines API] Failed to fetch episode data for routine ${routineId}:`, error);
+          return { 
+            routineId, 
+            data: { latestEpisode: null, failedCount: 0 }, 
+            success: false 
+          };
+        }
+      });
+
+      const results = await Promise.all(promises);
+      
+      results.forEach(({ routineId, data }) => {
+        if (data.latestEpisode) {
+          episodeMap.set(routineId, data.latestEpisode);
+        }
+        failedCountsMap.set(routineId, data.failedCount);
+      });
+    }
 
     const duration = Date.now() - startTime;
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Routines API] Completed ${successCount}/${routineIds.length} episode requests in ${duration}ms`);
+      console.log(`[Routines API] Completed episode data fetching for ${routineIds.length} routines in ${duration}ms (${episodeMap.size} episodes, ${failedCountsMap.size} failed counts)`);
     }
 
-    return episodeMap;
+    return { episodeMap, failedCountsMap };
   }
 
   /**

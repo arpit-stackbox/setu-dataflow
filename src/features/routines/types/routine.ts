@@ -1,6 +1,6 @@
 export type RoutineStatus = 'Success' | 'Failed' | 'Running' | 'Warning';
 
-export type RoutineType = 'Integration' | 'App Extension' | 'Orchestration' | 'Communication';
+export type RoutineType = 'Integration' | 'App Extension' | 'Orchestration' | 'Communication' | '-';
 
 export interface Routine {
   id: string;

@@ -1,6 +1,5 @@
 /**
  * API Response Types for Routines
- * Maps real API structure to internal types
  */
 
 import { Routine, RoutineType, RoutineStatus } from './routine';
@@ -74,7 +73,7 @@ export interface ApiEpisodeItem {
 
 export type EpisodesApiResponse = ApiEpisodeItem[];
 
-// API returns array directly, not wrapped in data object
+// API returns array directly
 export type RoutinesApiResponse = ApiRoutineItem[];
 
 // Enhanced API service response with headers
@@ -97,8 +96,7 @@ const DEFAULT_VALUES = {
 
 /**
  * Extracts episode status information from API episode data
- * Logic: For each segment, check the latest attempt (highest number)
- * Episode is successful only if ALL segments have successful latest attempts
+ * Episode is successful only if ALL segments have at least one successful attempt
  */
 function getEpisodeStatus(episode: ApiEpisodeItem): {
   status: RoutineStatus;
@@ -116,50 +114,32 @@ function getEpisodeStatus(episode: ApiEpisodeItem): {
   let allSegmentsSuccessful = true;
   let hasAnyErrors = false;
   let hasAnyRunning = false;
-  const segmentStatuses: Array<{ segmentId: string; success: boolean; running: boolean; error?: string }> = [];
 
-  // Check each segment's latest attempt
   for (const segment of episode.segments) {
     if (segment.attempts.length === 0) {
-      // No attempts yet - consider as running
       allSegmentsSuccessful = false;
       hasAnyRunning = true;
-      segmentStatuses.push({
-        segmentId: segment.id,
-        success: false,
-        running: true,
-      });
       continue;
     }
 
-    // Find the latest attempt (highest number)
-    const latestAttempt = segment.attempts.reduce((latest, current) => 
-      current.number > latest.number ? current : latest
+    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
+      attempt.success && !attempt.error
     );
+    const hasRunningAttempt = segment.attempts.some(attempt => 
+      !attempt.settled_at && !!attempt.started_at
+    );
+    const hasErrorAttempts = segment.attempts.some(attempt => !!attempt.error);
 
-    const isRunning = !latestAttempt.settled_at && !!latestAttempt.started_at;
-    const hasError = !!latestAttempt.error;
-    const isSuccessful = latestAttempt.success && !hasError;
-
-    segmentStatuses.push({
-      segmentId: segment.id,
-      success: isSuccessful,
-      running: isRunning,
-      error: latestAttempt.error || undefined,
-    });
-
-    if (isRunning) {
+    if (hasRunningAttempt) {
       hasAnyRunning = true;
+    } else if (!hasSuccessfulAttempt) {
       allSegmentsSuccessful = false;
-    } else if (!isSuccessful) {
-      allSegmentsSuccessful = false;
-      if (hasError) {
+      if (hasErrorAttempts) {
         hasAnyErrors = true;
       }
     }
   }
 
-  // Determine overall episode status
   let status: RoutineStatus;
   if (hasAnyRunning) {
     status = 'Running';
@@ -168,25 +148,7 @@ function getEpisodeStatus(episode: ApiEpisodeItem): {
   } else if (hasAnyErrors) {
     status = 'Failed';
   } else {
-    // Some segments not successful but no explicit errors
     status = 'Warning';
-  }
-
-  // Development logging to verify status calculation
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`[Episode Status] Episode ${episode.id}:`, {
-      status,
-      segments: episode.segments.length,
-      segmentStatuses: segmentStatuses.map(s => ({
-        segment: s.segmentId.slice(-8),
-        success: s.success,
-        running: s.running,
-        error: s.error?.slice(0, 30) + (s.error && s.error.length > 30 ? '...' : ''),
-      })),
-      allSuccessful: allSegmentsSuccessful,
-      hasErrors: hasAnyErrors,
-      hasRunning: hasAnyRunning,
-    });
   }
 
   return {
@@ -197,19 +159,60 @@ function getEpisodeStatus(episode: ApiEpisodeItem): {
 }
 
 /**
- * Maps API routine item to internal Routine type
- * Key mappings:
- * - title → name
- * - permission → type (with intelligent mapping)
+ * Determines if an episode is failed based on segment analysis
+ * Used for counting failed episodes consistently across the application
  */
-export function mapApiRoutineToRoutine(apiRoutine: ApiRoutineItem, latestEpisode?: ApiEpisodeItem): Routine {
+export function isEpisodeFailed(episode: ApiEpisodeItem): boolean {
+  if (episode.segments.length === 0) return false;
+  
+  let allSegmentsSuccessful = true;
+  let hasAnyErrors = false;
+  let hasAnyRunning = false;
+
+  for (const segment of episode.segments) {
+    if (segment.attempts.length === 0) {
+      hasAnyRunning = true;
+      allSegmentsSuccessful = false;
+      continue;
+    }
+
+    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
+      attempt.success && !attempt.error
+    );
+    const hasRunningAttempt = segment.attempts.some(attempt => 
+      !attempt.settled_at && !!attempt.started_at
+    );
+    const hasErrorAttempts = segment.attempts.some(attempt => !!attempt.error);
+
+    if (hasRunningAttempt) {
+      hasAnyRunning = true;
+    } else if (!hasSuccessfulAttempt) {
+      allSegmentsSuccessful = false;
+      if (hasErrorAttempts) {
+        hasAnyErrors = true;
+      }
+    }
+  }
+
+  // Episode is failed if it has errors and is not running and not all segments successful
+  return !hasAnyRunning && !allSegmentsSuccessful && hasAnyErrors;
+}
+
+/**
+ * Maps API routine item to internal Routine type
+ */
+export function mapApiRoutineToRoutine(
+  apiRoutine: ApiRoutineItem, 
+  latestEpisode?: ApiEpisodeItem, 
+  failedEpisodesLast7Days?: number
+): Routine {
   const episodeInfo = latestEpisode ? getEpisodeStatus(latestEpisode) : null;
 
   return {
     id: apiRoutine.id,
-    name: apiRoutine.title, // API field: title → internal field: name
+    name: apiRoutine.title,
     description: generateDescription(apiRoutine),
-    type: deriveRoutineType(apiRoutine), // API field: permission → internal field: type
+    type: deriveRoutineType(apiRoutine),
     sender: DEFAULT_VALUES.sender,
     receiver: DEFAULT_VALUES.receiver,
     lastEpisode: {
@@ -217,7 +220,7 @@ export function mapApiRoutineToRoutine(apiRoutine: ApiRoutineItem, latestEpisode
       status: episodeInfo?.status || DEFAULT_VALUES.lastEpisodeStatus,
     },
     lastRun: episodeInfo?.timestamp || apiRoutine.updated_at,
-    failedEpisodes: episodeInfo?.hasErrors ? 1 : DEFAULT_VALUES.failedEpisodes,
+    failedEpisodes: failedEpisodesLast7Days ?? DEFAULT_VALUES.failedEpisodes,
     modifiedBy: DEFAULT_VALUES.modifiedBy,
     createdBy: DEFAULT_VALUES.createdBy,
   };
@@ -244,14 +247,11 @@ function generateDescription(apiRoutine: ApiRoutineItem): string {
 
 /**
  * Derives routine type from API data
- * Maps permission field to internal RoutineType
  */
 function deriveRoutineType(apiRoutine: ApiRoutineItem): RoutineType {
-  // Use permission field to determine type
   if (apiRoutine.permission) {
     const permission = apiRoutine.permission.toLowerCase();
     
-    // Map common permission values to routine types
     if (permission.includes('orchestration') || permission.includes('orchestra')) {
       return 'Orchestration';
     }
@@ -268,22 +268,17 @@ function deriveRoutineType(apiRoutine: ApiRoutineItem): RoutineType {
       return 'Communication';
     }
     
-    // If permission doesn't match known patterns, default to App Extension
     return 'App Extension';
   }
   
-  // Fallback logic when permission is null
-  // If it has a schedule, it's likely orchestration
   if (apiRoutine.schedule && apiRoutine.schedule.trim()) {
     return 'Orchestration';
   }
   
-  // If it's awaited, it's likely integration
   if (apiRoutine.awaited) {
     return 'Integration';
   }
   
-  // Default to app extension
   return 'App Extension';
 }
 
@@ -311,6 +306,6 @@ export function mapFiltersToApiParams(filters: {
     includeDeleted: false,
     offset,
     limit,
-    sortMethod: 'title_asc', // TODO: Add sorting support
+    sortMethod: 'title_asc',
   };
 }

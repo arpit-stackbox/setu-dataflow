@@ -52,14 +52,15 @@ export async function getRoutines(filters: RoutinesFilters = {}): Promise<Routin
         console.log(`[Routines Service] Page ${page}: API returned ${apiResponse.data.length} routines (total: ${apiResponse.totalCount})`);
       }
 
-      // Step 2: Fetch episodes in parallel for ONLY these routines
+      // Step 2: Fetch episode data (latest episode + failed counts) in a single optimized call per routine
       const routineIds = apiResponse.data.map(routine => routine.id);
-      const episodeMap = await routinesApiClient.getLatestEpisodesForRoutines(routineIds);
+      const { episodeMap, failedCountsMap } = await routinesApiClient.getEpisodeDataForRoutines(routineIds);
 
-      // Step 3: Map routines with their episode data
+      // Step 3: Map routines with their episode data and failed counts
       const routinesWithEpisodes = apiResponse.data.map(apiRoutine => {
         const latestEpisode = episodeMap.get(apiRoutine.id);
-        return mapApiRoutineToRoutine(apiRoutine, latestEpisode);
+        const failedEpisodesCount = failedCountsMap.get(apiRoutine.id) || 0;
+        return mapApiRoutineToRoutine(apiRoutine, latestEpisode, failedEpisodesCount);
       });
 
       // Step 4: For server-side pagination, return all routines from the page
@@ -67,7 +68,7 @@ export async function getRoutines(filters: RoutinesFilters = {}): Promise<Routin
       const finalRoutines = routinesWithEpisodes;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Routines Service] Page ${page}: Returning ${finalRoutines.length} routines (fetched ${episodeMap.size} episodes)`);
+        console.log(`[Routines Service] Page ${page}: Returning ${finalRoutines.length} routines (optimized: ${episodeMap.size} episodes + ${failedCountsMap.size} failed counts)`);
       }
 
       return {
