@@ -12,8 +12,18 @@ export { EpisodeTableRow } from './components/EpisodeTableRow';
 export { ProgressBar } from './components/ProgressBar';
 
 // API
-export { getEpisodes, getEpisodeStatusTypes, getRoutineInfo } from './episodes-api';
-export type { EpisodesFilters, EpisodesResponse } from './episodes-api';
+export { 
+  getEpisodes, 
+  getEpisodeStatusTypes, 
+  getRoutineInfo,
+  episodesApiClient,
+  EpisodesApiClient 
+} from './api';
+export type { 
+  EpisodesFilters, 
+  EpisodesResponse, 
+  RoutineInfo 
+} from './api';
 
 // Types
 export type { Episode, EpisodeFilters } from './types/episode';

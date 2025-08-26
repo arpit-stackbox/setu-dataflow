@@ -199,6 +199,68 @@ export class RoutinesApiClient {
   }
 
   /**
+   * Fetch episodes for a specific routine with pagination
+   * Used by the episodes page to display episode history
+   */
+  async getEpisodesForRoutine(params: {
+    routineId: string;
+    limit?: number;
+    offset?: number;
+    reverse?: boolean;
+  }): Promise<{
+    episodes: EpisodesApiResponse;
+    totalCount: number;
+    offset: number;
+    limit: number;
+  }> {
+    const { routineId, limit = 50, offset = 0, reverse = true } = params;
+    
+    const searchParams = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      reverse: String(reverse),
+    });
+
+    const url = `${this.baseUrl}/api/routines/${routineId}/episodes?${searchParams}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(apiConfig.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      }
+
+      const episodes: EpisodesApiResponse = await response.json();
+      
+      // Extract pagination info from headers with fallback logic
+      const totalCountHeader = response.headers.get('total-count') || response.headers.get('Total-Count') || '0';
+      const totalCount = parseInt(totalCountHeader) || episodes.length;
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Episodes API] GET ${url} → ${response.status} (${episodes.length} episodes, total: ${totalCount})`);
+      }
+
+      return {
+        episodes,
+        totalCount,
+        offset,
+        limit,
+      };
+    } catch (error) {
+      console.error(`[Episodes API] GET ${url} → Error:`, error);
+      throw new Error(
+        `Failed to fetch episodes: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
    * Health check for the API
    */
   async healthCheck(): Promise<boolean> {

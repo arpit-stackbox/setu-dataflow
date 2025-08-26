@@ -1,27 +1,13 @@
-import { Routine } from './types/routine';
-import { mockRoutines } from '@/__mocks__/mock-routines';
-import { apiConfig } from '@/config/api';
-import { routinesApiClient } from './api/routines-client';
-import { mapApiRoutineToRoutine } from './types/api-types';
-
 /**
- * Server-side data fetching for routines
- * In a real application, this would fetch from an API or database
+ * Routines Service
+ * Service layer functions for routines operations
  */
 
-export interface RoutinesFilters {
-  search?: string;
-  type?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface RoutinesResponse {
-  routines: Routine[];
-  totalCount: number;
-  currentPage: number;
-  totalPages: number;
-}
+import { mockRoutines } from '@/__mocks__/mock-routines';
+import { apiConfig } from '@/config/api';
+import { routinesApiClient } from './routines-client';
+import { mapApiRoutineToRoutine } from '../types/api-types';
+import { RoutinesFilters, RoutinesResponse } from './types';
 
 /**
  * Fetch routines with server-side filtering and pagination

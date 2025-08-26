@@ -21,8 +21,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
   const { routineId } = await params;
 
   // Server-side data fetching
-  const [initialEpisodes, episodeStatusTypes, routineInfo] = await Promise.all([
-    getEpisodes({ routineId, page: 1, limit: 1000 }), // Get all episodes for client-side filtering
+  const [episodeStatusTypes, routineInfo] = await Promise.all([
     getEpisodeStatusTypes(),
     getRoutineInfo(routineId),
   ]);
@@ -41,6 +40,14 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
       </div>
     );
   }
+
+  // Now fetch episodes with the routine name to avoid duplicate API calls
+  const initialEpisodes = await getEpisodes({
+    routineId,
+    page: 1,
+    limit: 50,
+    routineName: routineInfo.name,
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-hidden">

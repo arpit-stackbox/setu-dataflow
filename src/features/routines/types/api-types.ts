@@ -3,6 +3,7 @@
  */
 
 import { Routine, RoutineType, RoutineStatus } from './routine';
+import { Episode } from '@/features/episodes/types/episode';
 
 // API Response types (based on actual API structure)
 export interface ApiRoutineItem {
@@ -280,6 +281,128 @@ function deriveRoutineType(apiRoutine: ApiRoutineItem): RoutineType {
   }
   
   return 'App Extension';
+}
+
+/**
+ * Maps API episode item to internal Episode type
+ * Converts the complex API episode structure to the simplified UI episode format
+ */
+export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?: string): Episode {
+  const episodeStatus = getEpisodeStatus(apiEpisode);
+  
+  // Calculate duration and progress from segments
+  const { duration, progress, steps, errorDetails, retryInfo } = calculateEpisodeMetrics(apiEpisode);
+  
+  // Determine end time
+  const endTime = calculateEndTime(apiEpisode);
+
+  return {
+    id: apiEpisode.id,
+    status: episodeStatus.status,
+    startTime: apiEpisode.created_at,
+    endTime,
+    duration,
+    progress,
+    steps,
+    errorDetails,
+    retryInfo,
+    routineId: apiEpisode.routine_id,
+    routineName: routineName || 'Unknown Routine',
+    // payloadFiles can be added later if needed
+  };
+}
+
+/**
+ * Calculate episode metrics from API episode data
+ */
+function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
+  if (apiEpisode.segments.length === 0) {
+    return {
+      duration: 0,
+      progress: 100,
+      steps: { completed: 0, total: 0 },
+      errorDetails: undefined,
+      retryInfo: { currentAttempt: 1, maxAttempts: 3 }
+    };
+  }
+
+  let totalSegments = apiEpisode.segments.length;
+  let completedSegments = 0;
+  let totalDuration = 0;
+  let errorDetails: string | undefined;
+  let maxAttempts = 1;
+  let totalCurrentAttempts = 0;
+
+  for (const segment of apiEpisode.segments) {
+    // Check if segment is completed (has successful attempt or all attempts failed)
+    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
+      attempt.success && !attempt.error
+    );
+    const hasOnlyFailedAttempts = segment.attempts.length > 0 && 
+      segment.attempts.every(attempt => !attempt.success || attempt.error);
+    
+    if (hasSuccessfulAttempt || hasOnlyFailedAttempts) {
+      completedSegments++;
+    }
+
+    // Calculate duration for this segment
+    for (const attempt of segment.attempts) {
+      if (attempt.started_at && attempt.settled_at) {
+        const startTime = new Date(attempt.started_at).getTime();
+        const endTime = new Date(attempt.settled_at).getTime();
+        totalDuration += endTime - startTime;
+      }
+      
+      // Track retry info
+      maxAttempts = Math.max(maxAttempts, attempt.number);
+      totalCurrentAttempts += attempt.number;
+      
+      // Collect error details
+      if (attempt.error && !errorDetails) {
+        errorDetails = attempt.error;
+      }
+    }
+  }
+
+  // Calculate progress percentage
+  const progress = totalSegments > 0 ? Math.round((completedSegments / totalSegments) * 100) : 100;
+  
+  // Calculate average current attempt
+  const avgCurrentAttempt = totalSegments > 0 ? Math.ceil(totalCurrentAttempts / totalSegments) : 1;
+
+  return {
+    duration: totalDuration,
+    progress,
+    steps: { completed: completedSegments, total: totalSegments },
+    errorDetails,
+    retryInfo: { 
+      currentAttempt: avgCurrentAttempt, 
+      maxAttempts: Math.max(maxAttempts, 3) // Default to at least 3
+    }
+  };
+}
+
+/**
+ * Calculate end time from API episode data
+ */
+function calculateEndTime(apiEpisode: ApiEpisodeItem): string | undefined {
+  if (apiEpisode.segments.length === 0) {
+    return apiEpisode.created_at;
+  }
+
+  let latestEndTime: string | undefined;
+
+  for (const segment of apiEpisode.segments) {
+    for (const attempt of segment.attempts) {
+      if (attempt.settled_at) {
+        if (!latestEndTime || attempt.settled_at > latestEndTime) {
+          latestEndTime = attempt.settled_at;
+        }
+      }
+    }
+  }
+
+  return latestEndTime;
 }
 
 /**

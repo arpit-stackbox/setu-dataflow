@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Routine } from "../types/routine";
-import { RoutinesResponse, getRoutines } from "../routines-api";
+import { RoutinesResponse, getRoutines } from "../api";
 import { RoutinesTable } from "./RoutinesTable";
 import { SearchAndFilter } from "@/components/layout/SearchAndFilter";
 import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";

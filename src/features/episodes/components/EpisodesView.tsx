@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EpisodesResponse } from "../episodes-api";
+import { EpisodesResponse } from "../api";
 import { EpisodesTable } from "./EpisodesTable";
 import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
 import { DEFAULT_EPISODES_PER_PAGE } from "@/lib/constants";
