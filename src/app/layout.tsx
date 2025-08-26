@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { validateConfig } from "@/config";
 import { handleUncaughtError } from "@/lib/errors";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ApiToggle } from "@/components/debug/api-toggle";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -182,7 +183,10 @@ export default function RootLayout({
 
         {/* Development tools */}
         {process.env.NODE_ENV === "development" && (
-          <div id="development-tools" />
+          <>
+            <div id="development-tools" />
+            <ApiToggle />
+          </>
         )}
       </body>
     </html>

@@ -11,9 +11,9 @@ import {
  * Fetches initial data on the server for better performance and SEO
  */
 export default async function Dashboard() {
-  // Server-side data fetching - get all routines for client-side filtering
+  // Server-side data fetching - get first page only (let client handle pagination)
   const [initialRoutines, routineTypes] = await Promise.all([
-    getRoutines({ page: 1, limit: 1000 }), // Get all routines
+    getRoutines({ page: 1, limit: 10 }), // Get first page only
     getRoutineTypes(),
   ]);
 
