@@ -1,4 +1,5 @@
 import { Episode } from "../types/episode";
+import { formatDateTime } from "@/lib/episode-utils";
 
 interface RetryInfoCardProps {
   episode: Episode;
@@ -32,7 +33,7 @@ export function RetryInfoCard({ episode }: RetryInfoCardProps) {
           <div>
             <span className="text-gray-600 text-sm">Next Retry</span>
             <div className="font-medium text-sm text-blue-600">
-              {new Date(episode.retryInfo.nextRetryAt).toLocaleString()}
+              {formatDateTime(episode.retryInfo.nextRetryAt)}
             </div>
           </div>
         )}

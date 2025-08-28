@@ -7,7 +7,11 @@ import { Download, ChevronRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Episode } from "../types/episode";
 import { STATUS_BADGE_CONFIG, DEFAULT_STATUS_BADGE } from "@/lib/constants";
-import { formatDurationWithStatus, formatRetryInfo } from "@/lib/episode-utils";
+import {
+  formatDurationWithStatus,
+  formatRetryInfo,
+  formatDateTime,
+} from "@/lib/episode-utils";
 import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
 import { RetryInfoCard } from "./RetryInfoCard";
@@ -67,7 +71,7 @@ export function EpisodeTableRow({
           <div className="space-y-1">
             <div className="font-medium text-blue-600">#{episode.id}</div>
             <div className="text-xs text-gray-500">
-              {new Date(episode.startTime).toLocaleString()}
+              {formatDateTime(episode.startTime)}
             </div>
           </div>
         </TableCell>
