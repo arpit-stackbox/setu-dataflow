@@ -12,26 +12,32 @@ import { DEFAULT_ITEMS_PER_PAGE } from "@/lib/constants";
 interface RoutinesViewProps {
   initialData: RoutinesResponse;
   routineTypes: string[];
+  initialPage?: number;
 }
 
 /**
  * RoutinesView - Client Component for interactive functionality
  * Handles search, filtering, and server-side pagination
  */
-export function RoutinesView({ initialData, routineTypes }: RoutinesViewProps) {
+export function RoutinesView({
+  initialData,
+  routineTypes,
+  initialPage = 1,
+}: RoutinesViewProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [currentData, setCurrentData] = useState<RoutinesResponse>(initialData);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All Types");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
   // Handle routine click navigation
   const handleRoutineClick = useCallback(
     (routine: Routine) => {
-      router.push(`/episodes/${routine.id}`);
+      // Include the current page in the navigation to preserve pagination state
+      router.push(`/episodes/${routine.id}?returnPage=${currentPage}`);
     },
-    [router]
+    [router, currentPage]
   );
 
   // Handle page change with API call
@@ -56,6 +62,9 @@ export function RoutinesView({ initialData, routineTypes }: RoutinesViewProps) {
 
           setCurrentData(newData);
           setCurrentPage(page);
+
+          // Update URL to reflect the current page
+          router.push(`/?page=${page}`, { scroll: false });
         } catch (error) {
           console.error("❌ Failed to load page:", error);
           // Handle error - keep current data but still update page
@@ -63,7 +72,7 @@ export function RoutinesView({ initialData, routineTypes }: RoutinesViewProps) {
         }
       });
     },
-    [searchQuery, selectedType, currentData, currentPage]
+    [router, searchQuery, selectedType, currentData, currentPage]
   ); // Handle filter changes with API call
   const handleFiltersChange = useCallback((query: string, type: string) => {
     // Temporarily disabled until we implement proper server-side filtering

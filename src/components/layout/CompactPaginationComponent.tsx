@@ -27,7 +27,7 @@ export function CompactPaginationComponent({
 
   const displayInfo = useMemo(
     () => ({
-      start: (currentPage - 1) * itemsPerPage + 1,
+      start: totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
       end: Math.min(currentPage * itemsPerPage, totalItems),
       total: totalItems,
     }),
@@ -45,23 +45,29 @@ export function CompactPaginationComponent({
     [currentPage, totalPages, onPageChange]
   );
 
-  if (totalPages <= 1) return null;
+  // Always show pagination, even with 0 items or 1 page
 
   return (
     <div className="flex items-center justify-between gap-4 text-sm text-gray-600">
       {/* Results info - compact format */}
       <div className="text-xs sm:text-sm whitespace-nowrap">
-        {displayInfo.start}–{displayInfo.end} of {displayInfo.total}
+        {totalItems === 0 ? (
+          "0 results"
+        ) : (
+          <>
+            {displayInfo.start}–{displayInfo.end} of {displayInfo.total}
+          </>
+        )}
       </div>
 
-      {/* Compact pagination controls */}
+      {/* Compact pagination controls - show even with 1 page */}
       <div className="flex items-center gap-1">
         {/* Previous button */}
         <button
           onClick={(e) => handlePageClick(e, currentPage - 1)}
-          disabled={currentPage === 1}
+          disabled={currentPage === 1 || totalPages === 0}
           className={`p-1 rounded hover:bg-gray-100 transition-colors ${
-            currentPage === 1
+            currentPage === 1 || totalPages === 0
               ? "text-gray-300 cursor-not-allowed"
               : "text-gray-600 hover:text-gray-900"
           }`}
@@ -74,15 +80,17 @@ export function CompactPaginationComponent({
         <div className="flex items-center gap-2 px-2">
           <span className="text-xs text-gray-500">Page</span>
           <span className="font-medium text-gray-900">{currentPage}</span>
-          <span className="text-xs text-gray-500">of {totalPages}</span>
+          <span className="text-xs text-gray-500">
+            of {Math.max(1, totalPages)}
+          </span>
         </div>
 
         {/* Next button */}
         <button
           onClick={(e) => handlePageClick(e, currentPage + 1)}
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages <= 1}
           className={`p-1 rounded hover:bg-gray-100 transition-colors ${
-            currentPage === totalPages
+            currentPage === totalPages || totalPages <= 1
               ? "text-gray-300 cursor-not-allowed"
               : "text-gray-600 hover:text-gray-900"
           }`}

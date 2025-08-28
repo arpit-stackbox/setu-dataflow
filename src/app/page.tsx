@@ -6,14 +6,21 @@ import {
   RoutinesLoadingSkeleton,
 } from "@/features/routines";
 
+interface DashboardProps {
+  searchParams: Promise<{ page?: string }>;
+}
+
 /**
  * Dashboard Page - Server Component
  * Fetches initial data on the server for better performance and SEO
  */
-export default async function Dashboard() {
-  // Server-side data fetching - get first page only (let client handle pagination)
+export default async function Dashboard({ searchParams }: DashboardProps) {
+  const { page } = await searchParams;
+  const currentPage = page ? parseInt(page, 10) : 1;
+
+  // Server-side data fetching - get the requested page
   const [initialRoutines, routineTypes] = await Promise.all([
-    getRoutines({ page: 1, limit: 10 }), // Get first page only
+    getRoutines({ page: currentPage, limit: 10 }),
     getRoutineTypes(),
   ]);
 
@@ -29,6 +36,7 @@ export default async function Dashboard() {
         <RoutinesView
           initialData={initialRoutines}
           routineTypes={routineTypes}
+          initialPage={currentPage}
         />
       </Suspense>
     </div>
