@@ -15,8 +15,6 @@ import { RoutinesFilters, RoutinesResponse } from './types';
  */
 export async function getRoutines(filters: RoutinesFilters = {}): Promise<RoutinesResponse> {
   const {
-    search = '',
-    type = 'All Types',
     page = 1,
     limit = 10
   } = filters;
@@ -74,24 +72,13 @@ export async function getRoutines(filters: RoutinesFilters = {}): Promise<Routin
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  // Server-side filtering
-  const filteredRoutines = mockRoutines.filter((routine) => {
-    const matchesSearch = search === '' ||
-      routine.name.toLowerCase().includes(search.toLowerCase()) ||
-      routine.description.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesType = type === 'All Types' || routine.type === type;
-    
-    return matchesSearch && matchesType;
-  });
-
-  // Server-side pagination
-  const totalCount = filteredRoutines.length;
+  // Simple pagination without filtering (to match API behavior)
+  const totalCount = mockRoutines.length;
   const totalPages = Math.ceil(totalCount / limit);
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   
-  const paginatedRoutines = filteredRoutines.slice(startIndex, endIndex);
+  const paginatedRoutines = mockRoutines.slice(startIndex, endIndex);
 
   return {
     routines: paginatedRoutines,
@@ -103,28 +90,37 @@ export async function getRoutines(filters: RoutinesFilters = {}): Promise<Routin
 
 /**
  * Get routine types for filter dropdown
- * Uses real API data when available, otherwise falls back to mock data
+ * Fetches a sample of routines only once to extract all available types
  */
+let cachedRoutineTypes: string[] | null = null;
+
 export async function getRoutineTypes(): Promise<string[]> {
+  // Return cached types if already fetched
+  if (cachedRoutineTypes) {
+    return cachedRoutineTypes;
+  }
+
   if (apiConfig.useRealApi) {
     try {
-      // Fetch a reasonable sample to extract types (not all routines)
+      // Fetch all routines to get complete type diversity
       const apiResponse = await routinesApiClient.getRoutines({
         nodeCode: apiConfig.defaults.nodeCode,
         includeDeleted: false,
         offset: 0,
-        limit: 50, // Fetch 50 routines to get type diversity without fetching all
+        limit: 1000, // Get all routines to ensure we have all types
         sortMethod: 'title_asc'
       });
 
       const routines = apiResponse.data.map(apiRoutine => mapApiRoutineToRoutine(apiRoutine));
       const types = Array.from(new Set(routines.map(routine => routine.type)));
       
+      cachedRoutineTypes = ['All Types', ...types.sort()];
+      
       if (process.env.NODE_ENV === 'development') {
         console.log(`[Routines Service] Extracted types from API sample (${apiResponse.data.length} routines):`, types);
       }
       
-      return ['All Types', ...types.sort()];
+      return cachedRoutineTypes;
     } catch (error) {
       console.error('[Routines Service] Failed to fetch types from API, using mock data:', error);
       // Fall back to mock data
@@ -133,5 +129,6 @@ export async function getRoutineTypes(): Promise<string[]> {
 
   // Mock data fallback (original logic)
   const types = Array.from(new Set(mockRoutines.map(routine => routine.type)));
-  return ['All Types', ...types];
+  cachedRoutineTypes = ['All Types', ...types];
+  return cachedRoutineTypes;
 }

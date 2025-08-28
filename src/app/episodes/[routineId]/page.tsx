@@ -1,30 +1,56 @@
 import { Suspense } from "react";
 import {
-  getEpisodes,
   getEpisodeStatusTypes,
-  getRoutineInfo,
+  episodesApiClient,
   EpisodesView,
   EpisodesLoadingSkeleton,
 } from "@/features/episodes";
+import { routinesApiClient } from "@/features/routines/api/routines-client";
+import { mapApiEpisodeToEpisode } from "@/features/routines/types/api-types";
 
 interface EpisodePageProps {
   params: Promise<{
     routineId: string;
   }>;
+  searchParams: Promise<{
+    returnPage?: string;
+    routineName?: string;
+  }>;
 }
 
 /**
  * Episodes Page - Server Component
- * Fetches episode data on the server for better performance and SEO
+ * Uses direct episodes API for better performance
  */
-export default async function EpisodePage({ params }: EpisodePageProps) {
+export default async function EpisodePage({
+  params,
+  searchParams,
+}: EpisodePageProps) {
   const { routineId } = await params;
+  const { routineName } = await searchParams;
 
-  // Server-side data fetching
-  const [episodeStatusTypes, routineInfo] = await Promise.all([
+  // Server-side data fetching using direct APIs
+  const [episodeStatusTypes, episodesResponse] = await Promise.all([
     getEpisodeStatusTypes(),
-    getRoutineInfo(routineId),
+    // Get episodes directly from episodes API
+    episodesApiClient.getEpisodesForRoutine({
+      routineId,
+      limit: 50,
+      offset: 0,
+      reverse: true,
+    }),
   ]);
+
+  // Use routine name from URL params (from RoutinesTable) or fallback to episode data
+  const finalRoutineName =
+    routineName ||
+    (episodesResponse.episodes.length > 0
+      ? episodesResponse.episodes[0].fallback_title ||
+        `Routine ${routineId.slice(-8)}`
+      : `Routine ${routineId.slice(-8)}`);
+
+  // Create routine info object
+  const routineInfo = { id: routineId, name: finalRoutineName };
 
   if (!routineInfo) {
     return (
@@ -41,13 +67,18 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     );
   }
 
-  // Now fetch episodes with the routine name to avoid duplicate API calls
-  const initialEpisodes = await getEpisodes({
-    routineId,
-    page: 1,
-    limit: 50,
-    routineName: routineInfo.name,
-  });
+  // Map episodes to internal format
+  const mappedEpisodes = episodesResponse.episodes.map((apiEpisode) =>
+    mapApiEpisodeToEpisode(apiEpisode, routineInfo.name)
+  );
+
+  const initialEpisodes = {
+    episodes: mappedEpisodes,
+    totalCount: episodesResponse.totalCount,
+    currentPage: 1,
+    totalPages: Math.ceil(episodesResponse.totalCount / 50),
+    routineInfo: { id: routineId, name: routineInfo.name },
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-hidden">
@@ -56,7 +87,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
         <EpisodesView
           initialData={initialEpisodes}
           episodeStatusTypes={episodeStatusTypes}
-          routineInfo={routineInfo}
+          routineInfo={{ id: routineId, name: routineInfo.name }}
         />
       </Suspense>
     </div>

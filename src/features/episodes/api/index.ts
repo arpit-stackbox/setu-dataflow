@@ -7,7 +7,7 @@
 export { episodesApiClient, EpisodesApiClient } from './episodes-client';
 
 // Service functions
-export { getEpisodes, getRoutineInfo, getEpisodeStatusTypes } from './episodes-service';
+export { getEpisodeStatusTypes } from './episodes-service';
 
 // Types
 export type { 

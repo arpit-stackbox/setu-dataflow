@@ -1,152 +1,140 @@
-import { routinesApiClient } from '@/features/routines/api/routines-client';
-import { mapApiEpisodeToEpisode } from '@/features/routines/types/api-types';
-import { mockRoutines } from '@/__mocks__/mock-routines';
-import type { EpisodesFilters, EpisodesResponse, RoutineInfo } from './types';
+import { apiConfig } from '@/config/api';
+import { isEpisodeFailed } from '@/features/routines/types/api-types';
+import type { ApiEpisodeItem } from '@/features/routines/types/api-types';
 
 /**
  * Episodes API Client
- * Handles all episodes-related API interactions
+ * Handles all episodes-related API interactions using the direct episodes endpoint
  */
 export class EpisodesApiClient {
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = apiConfig.baseUrl;
+  }
+
   /**
-   * Fetch episodes with server-side filtering and pagination
-   * Now uses real API integration with the staging environment
+   * Fetch episodes for a specific routine using the direct episodes API
+   * This is the primary method for getting episode data
    */
-  async getEpisodes({
-    routineId,
-    page = 1,
-    limit = 50,
-    search = '',
-    status = 'All Types',
-    dateRange,
-    routineName = 'Unknown Routine'
-  }: EpisodesFilters & { routineName?: string }): Promise<EpisodesResponse> {
+  async getEpisodesForRoutine(params: {
+    routineId: string;
+    limit?: number;
+    offset?: number;
+    reverse?: boolean;
+    recencyLimit?: number;
+  }): Promise<{
+    episodes: ApiEpisodeItem[];
+    totalCount: number;
+    offset: number;
+    limit: number;
+  }> {
+    const { 
+      routineId, 
+      limit = 50, 
+      offset = 0, 
+      reverse = true,
+      recencyLimit,
+    } = params;
+    
+    const searchParams = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      reverse: String(reverse),
+      routine_id: routineId,
+    });
+
+    // Add recency limit only if provided (for failed episode counts)
+    if (recencyLimit !== undefined) {
+      searchParams.set('recency_limit', String(recencyLimit));
+    }
+
+    const url = `${this.baseUrl}/api/episodes?${searchParams}`;
+
     try {
-      const offset = (page - 1) * limit;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(apiConfig.timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Episodes API call failed: ${response.status} ${response.statusText}`);
+      }
+
+      const episodes: ApiEpisodeItem[] = await response.json();
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Episodes Service] Fetching episodes for routine ${routineId}: page=${page}, limit=${limit}, offset=${offset}`);
-      }
-
-      // Fetch episodes from the real API
-      const apiResponse = await routinesApiClient.getEpisodesForRoutine({
-        routineId,
-        limit,
-        offset,
-        reverse: true
-      });
+      // Extract pagination info from headers
+      const totalCountHeader = response.headers.get('total-count') || 
+                               response.headers.get('x-total-count') || 
+                               response.headers.get('Total-Count') || '0';
+      const totalCount = parseInt(totalCountHeader) || episodes.length;
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Episodes Service] API returned ${apiResponse.episodes.length} episodes (total: ${apiResponse.totalCount})`);
+        console.log(`[Episodes API] GET ${url} → ${response.status} (${episodes.length} episodes, total: ${totalCount})`);
       }
-
-      // Map API episodes to internal Episode format
-      const mappedEpisodes = apiResponse.episodes.map(apiEpisode => 
-        mapApiEpisodeToEpisode(apiEpisode, routineName)
-      );
-
-      // Apply client-side filters if needed (search, status, dateRange)
-      const filteredEpisodes = mappedEpisodes.filter((episode) => {
-        // Search filter
-        const matchesSearch = search === '' ||
-          episode.id.toLowerCase().includes(search.toLowerCase()) ||
-          episode.status.toLowerCase().includes(search.toLowerCase()) ||
-          episode.errorDetails?.toLowerCase().includes(search.toLowerCase());
-        
-        // Status filter
-        const matchesStatus = status === 'All Types' || episode.status === status;
-        
-        // Date range filter
-        const matchesDateRange = !dateRange || (() => {
-          const episodeDate = new Date(episode.startTime);
-          const startDate = new Date(dateRange.start);
-          const endDate = new Date(dateRange.end);
-          endDate.setHours(23, 59, 59, 999);
-          return episodeDate >= startDate && episodeDate <= endDate;
-        })();
-        
-        return matchesSearch && matchesStatus && matchesDateRange;
-      });
-
-      // For now, we'll use the filtered episodes length for total count
-      // In a real implementation, the API should support server-side filtering
-      const totalCount = apiResponse.totalCount;
-      const totalPages = Math.ceil(totalCount / limit);
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Episodes Service] Returning ${filteredEpisodes.length} episodes (page ${page}/${totalPages})`);
-      }
-
-      // Create pagination slice
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      const paginatedEpisodes = filteredEpisodes.slice(startIndex, endIndex);
-
-      // Set routine info if episodes exist
-      const routineInfo = paginatedEpisodes.length > 0 ? {
-        id: routineId,
-        name: paginatedEpisodes[0].routineName
-      } : { id: routineId, name: 'Unknown Routine' };
 
       return {
-        episodes: paginatedEpisodes,
+        episodes,
         totalCount,
-        currentPage: page,
-        totalPages,
-        routineInfo
+        offset,
+        limit,
       };
     } catch (error) {
-      console.error(`[Episodes Service] Failed to fetch episodes for routine ${routineId}:`, error);
-      
-      // Return empty response on error
-      return {
-        episodes: [],
-        totalCount: 0,
-        currentPage: page,
-        totalPages: 0,
-        routineInfo: { id: routineId, name: 'Unknown Routine' }
-      };
+      console.error(`[Episodes API] Failed to fetch episodes for routine ${routineId}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Get routine info by ID
-   * Now uses real API instead of mock data
+   * Get the latest episode for a routine (for dashboard/routine list)
    */
-  async getRoutineInfo(routineId: string): Promise<RoutineInfo | null> {
+  async getLatestEpisode(routineId: string): Promise<ApiEpisodeItem | null> {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Episodes Service] Fetching routine info for ${routineId}`);
-      }
-
-      // Fetch routine info from real API
-      const routinesResponse = await routinesApiClient.getRoutines({
-        nodeCode: process.env.NEXT_PUBLIC_DEFAULT_NODE_CODE || 'test',
-        includeDeleted: false,
+      const result = await this.getEpisodesForRoutine({
+        routineId,
+        limit: 1,
         offset: 0,
-        limit: 1000, // Get all routines to find our specific one
-        sortMethod: 'title_asc',
+        reverse: true,
       });
-      
-      const routine = routinesResponse.data.find(r => r.id === routineId);
-      
-      if (routine) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Episodes Service] Found routine: ${routine.title}`);
-        }
-        return { id: routineId, name: routine.title };
-      } else {
-        console.warn(`[Episodes Service] Routine ${routineId} not found in API response`);
-        return null;
-      }
+
+      return result.episodes.length > 0 ? result.episodes[0] : null;
     } catch (error) {
-      console.error(`[Episodes Service] Failed to fetch routine info for ${routineId}:`, error);
-      
-      // Fall back to mock data
-      const routine = mockRoutines.find(routine => routine.id === routineId);
-      return routine ? { id: routineId, name: routine.name } : null;
+      console.error(`[Episodes API] Failed to fetch latest episode for routine ${routineId}:`, error);
+      return null;
     }
   }
+
+  /**
+   * Get failed episodes count for a routine in the last N days
+   */
+  async getFailedEpisodesCount(routineId: string, daysBack: number = 7): Promise<number> {
+    try {
+      // Calculate recency limit in seconds (days * 24 * 60 * 60)
+      const recencyLimit = daysBack * 24 * 60 * 60;
+      
+      const result = await this.getEpisodesForRoutine({
+        routineId,
+        limit: 1000, // Use high limit to get all episodes in the time period
+        offset: 0,
+        reverse: true,
+        recencyLimit, // This will now be properly applied to the API call
+      });
+
+      // Count failed episodes
+      const failedCount = result.episodes.filter(episode => 
+        isEpisodeFailed(episode)
+      ).length;
+
+      return failedCount;
+    } catch (error) {
+      console.error(`[Episodes API] Failed to get failed episodes count for routine ${routineId}:`, error);
+      return 0;
+    }
+  }
+
 }
 
 // Export singleton instance

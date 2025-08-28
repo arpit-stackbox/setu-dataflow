@@ -34,8 +34,12 @@ export function RoutinesView({
   // Handle routine click navigation
   const handleRoutineClick = useCallback(
     (routine: Routine) => {
-      // Include the current page in the navigation to preserve pagination state
-      router.push(`/episodes/${routine.id}?returnPage=${currentPage}`);
+      // Include the current page and routine name in the navigation to preserve state
+      const searchParams = new URLSearchParams({
+        returnPage: currentPage.toString(),
+        routineName: routine.name,
+      });
+      router.push(`/episodes/${routine.id}?${searchParams.toString()}`);
     },
     [router, currentPage]
   );

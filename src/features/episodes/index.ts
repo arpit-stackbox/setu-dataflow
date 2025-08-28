@@ -12,10 +12,8 @@ export { EpisodeTableRow } from './components/EpisodeTableRow';
 export { ProgressBar } from './components/ProgressBar';
 
 // API
-export { 
-  getEpisodes, 
-  getEpisodeStatusTypes, 
-  getRoutineInfo,
+export {
+  getEpisodeStatusTypes,
   episodesApiClient,
   EpisodesApiClient 
 } from './api';

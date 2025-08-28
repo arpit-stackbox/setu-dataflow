@@ -94,7 +94,8 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
               Episodes
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              {routineInfo.name} • {filteredEpisodes.length} of {initialData.totalCount} episodes
+              {routineInfo.name} • {filteredEpisodes.length} of{" "}
+              {initialData.totalCount} episodes
             </p>
           </div>
         </div>

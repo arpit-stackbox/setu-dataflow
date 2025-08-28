@@ -70,6 +70,8 @@ export interface ApiEpisodeItem {
   args: Record<string, unknown>;
   crux: Record<string, unknown>;
   segments: ApiEpisodeSegment[];
+  state: string; // Episode state from API (e.g., "failed", "success", "running", etc.)
+  fallback_title?: string; // Optional fallback title
 }
 
 export type EpisodesApiResponse = ApiEpisodeItem[];
@@ -96,107 +98,58 @@ const DEFAULT_VALUES = {
 } as const;
 
 /**
- * Extracts episode status information from API episode data
- * Episode is successful only if ALL segments have at least one successful attempt
+ * Get episode status from API state field
+ * Now uses the direct state field from the API response instead of complex logic
  */
 function getEpisodeStatus(episode: ApiEpisodeItem): {
   status: RoutineStatus;
   timestamp: string;
   hasErrors: boolean;
 } {
-  if (episode.segments.length === 0) {
-    return {
-      status: 'Success',
-      timestamp: episode.created_at,
-      hasErrors: false,
-    };
-  }
-
-  let allSegmentsSuccessful = true;
-  let hasAnyErrors = false;
-  let hasAnyRunning = false;
-
-  for (const segment of episode.segments) {
-    if (segment.attempts.length === 0) {
-      allSegmentsSuccessful = false;
-      hasAnyRunning = true;
-      continue;
-    }
-
-    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
-      attempt.success && !attempt.error
-    );
-    const hasRunningAttempt = segment.attempts.some(attempt => 
-      !attempt.settled_at && !!attempt.started_at
-    );
-    const hasErrorAttempts = segment.attempts.some(attempt => !!attempt.error);
-
-    if (hasRunningAttempt) {
-      hasAnyRunning = true;
-    } else if (!hasSuccessfulAttempt) {
-      allSegmentsSuccessful = false;
-      if (hasErrorAttempts) {
-        hasAnyErrors = true;
-      }
-    }
-  }
-
+  // Map API state to our RoutineStatus type
   let status: RoutineStatus;
-  if (hasAnyRunning) {
-    status = 'Running';
-  } else if (allSegmentsSuccessful) {
-    status = 'Success';
-  } else if (hasAnyErrors) {
-    status = 'Failed';
-  } else {
-    status = 'Warning';
+  let hasErrors = false;
+
+  switch (episode.state?.toLowerCase()) {
+    case 'success':
+    case 'completed':
+      status = 'Success';
+      break;
+    case 'failed':
+    case 'error':
+      status = 'Failed';
+      hasErrors = true;
+      break;
+    case 'running':
+    case 'executing':
+    case 'in_progress':
+      status = 'Running';
+      break;
+    case 'warning':
+    case 'partial':
+      status = 'Warning';
+      hasErrors = true;
+      break;
+    default:
+      // Fallback to the old logic if state is not recognized
+      status = 'Warning';
+      console.warn(`Unknown episode state: ${episode.state}`);
   }
 
   return {
     status,
     timestamp: episode.created_at,
-    hasErrors: hasAnyErrors,
+    hasErrors,
   };
 }
 
 /**
- * Determines if an episode is failed based on segment analysis
- * Used for counting failed episodes consistently across the application
+ * Determines if an episode is failed using the direct state field
+ * Much simpler than the previous segment analysis approach
  */
 export function isEpisodeFailed(episode: ApiEpisodeItem): boolean {
-  if (episode.segments.length === 0) return false;
-  
-  let allSegmentsSuccessful = true;
-  let hasAnyErrors = false;
-  let hasAnyRunning = false;
-
-  for (const segment of episode.segments) {
-    if (segment.attempts.length === 0) {
-      hasAnyRunning = true;
-      allSegmentsSuccessful = false;
-      continue;
-    }
-
-    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
-      attempt.success && !attempt.error
-    );
-    const hasRunningAttempt = segment.attempts.some(attempt => 
-      !attempt.settled_at && !!attempt.started_at
-    );
-    const hasErrorAttempts = segment.attempts.some(attempt => !!attempt.error);
-
-    if (hasRunningAttempt) {
-      hasAnyRunning = true;
-    } else if (!hasSuccessfulAttempt) {
-      allSegmentsSuccessful = false;
-      if (hasErrorAttempts) {
-        hasAnyErrors = true;
-      }
-    }
-  }
-
-  // Episode is failed if it has errors and is not running and not all segments successful
-  return !hasAnyRunning && !allSegmentsSuccessful && hasAnyErrors;
+  const state = episode.state?.toLowerCase();
+  return state === 'failed' || state === 'error';
 }
 
 /**
@@ -326,7 +279,7 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
     };
   }
 
-  let totalSegments = apiEpisode.segments.length;
+  const totalSegments = apiEpisode.segments.length;
   let completedSegments = 0;
   let totalDuration = 0;
   let errorDetails: string | undefined;
