@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EpisodesResponse } from "../api";
@@ -8,7 +8,9 @@ import { EpisodesTable } from "./EpisodesTable";
 import { EpisodeSearchAndFilter } from "./EpisodeSearchAndFilter";
 import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
 import { DEFAULT_EPISODES_PER_PAGE } from "@/lib/constants";
-import { formatEpisodeTitle } from "@/lib/episode-utils";
+import { episodesApiClient } from "../api/episodes-client";
+import { mapApiEpisodeToEpisode } from "@/features/routines/types/api-types";
+import { Episode } from "../types/episode";
 
 interface EpisodesViewProps {
   initialData: EpisodesResponse;
@@ -20,65 +22,60 @@ interface EpisodesViewProps {
 }
 
 /**
- * EpisodesView - Client Component for interactive functionality
- * Handles the header, back navigation, search/filtering, and episode table with pagination
+ * EpisodesView - Simplified for server-side pagination only
+ * No client-side filtering - just pure server-side pagination
  */
 export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState("All Types");
-  const [dateRange, setDateRange] = useState<{ start: string; end: string }>();
+  const [episodes, setEpisodes] = useState<Episode[]>(initialData.episodes);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
     window.history.back();
   }, []);
 
-  // Handle filter changes from search component
+  // Handle page change with server-side loading
+  const handlePageChange = useCallback(
+    async (page: number) => {
+      setIsLoading(true);
+      try {
+        const offset = (page - 1) * DEFAULT_EPISODES_PER_PAGE;
+        console.log(`[Episodes] Loading page ${page}, offset: ${offset}`);
+
+        const episodesResponse = await episodesApiClient.getEpisodesForRoutine({
+          routineId: routineInfo.id,
+          limit: DEFAULT_EPISODES_PER_PAGE,
+          offset,
+          reverse: true,
+        });
+
+        const mappedEpisodes = episodesResponse.episodes.map((apiEpisode) =>
+          mapApiEpisodeToEpisode(apiEpisode, routineInfo.name)
+        );
+
+        console.log(
+          `[Episodes] Loaded ${mappedEpisodes.length} episodes for page ${page}`
+        );
+        setEpisodes(mappedEpisodes);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Failed to load episodes:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [routineInfo.id, routineInfo.name]
+  );
+
+  // Handle filters change (no-op for now)
   const handleFiltersChange = useCallback(
     (query: string, type: string, range?: { start: string; end: string }) => {
-      setSearchQuery(query);
-      setSelectedType(type);
-      setDateRange(range);
-      setCurrentPage(1); // Reset to first page when filters change
+      console.log("[Episodes] Filter change (no-op):", { query, type, range });
+      // TODO: Implement filtering logic later
     },
     []
   );
-
-  // Filter episodes based on search criteria
-  const filteredEpisodes = useMemo(() => {
-    return initialData.episodes.filter((episode) => {
-      // Search filter
-      const matchesSearch =
-        searchQuery === "" ||
-        episode.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        formatEpisodeTitle(episode)
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        episode.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        episode.errorDetails?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      // Status filter
-      const matchesStatus =
-        selectedType === "All Types" || episode.state === selectedType;
-
-      // Date range filter
-      const episodeDate = new Date(episode.startTime);
-      const matchesDateRange =
-        !dateRange ||
-        (episodeDate >= new Date(dateRange.start) &&
-          episodeDate <= new Date(dateRange.end));
-
-      return matchesSearch && matchesStatus && matchesDateRange;
-    });
-  }, [initialData.episodes, searchQuery, selectedType, dateRange]);
-
-  // Filter episodes by current page for pagination
-  const paginatedEpisodes = useMemo(() => {
-    const startIndex = (currentPage - 1) * DEFAULT_EPISODES_PER_PAGE;
-    const endIndex = startIndex + DEFAULT_EPISODES_PER_PAGE;
-    return filteredEpisodes.slice(startIndex, endIndex);
-  }, [filteredEpisodes, currentPage]);
 
   return (
     <>
@@ -98,8 +95,8 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
               Episodes
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              {routineInfo.name} • {filteredEpisodes.length} of{" "}
-              {initialData.totalCount} episodes
+              {routineInfo.name} • Page {currentPage} of{" "}
+              {Math.ceil(initialData.totalCount / DEFAULT_EPISODES_PER_PAGE)}
             </p>
           </div>
         </div>
@@ -114,17 +111,23 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
       <div className="flex justify-end mb-4">
         <CompactPaginationComponent
           currentPage={currentPage}
-          totalItems={filteredEpisodes.length}
-          onPageChange={setCurrentPage}
+          totalItems={initialData.totalCount}
+          onPageChange={handlePageChange}
           itemsPerPage={DEFAULT_EPISODES_PER_PAGE}
         />
       </div>
 
       {/* Episodes Table */}
-      <EpisodesTable
-        episodes={paginatedEpisodes}
-        hasAnyEpisodes={initialData.totalCount > 0}
-      />
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="text-gray-500">Loading episodes...</div>
+        </div>
+      ) : (
+        <EpisodesTable
+          episodes={episodes}
+          hasAnyEpisodes={initialData.totalCount > 0}
+        />
+      )}
     </>
   );
 }
