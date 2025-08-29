@@ -273,6 +273,7 @@ export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?:
  * Progress calculation: A segment/step is considered completed only if ANY attempt has success: true
  * Error details: Shows error from the last failing step's latest attempt
  * Duration calculation: Sum of all attempt durations (settled_at - started_at) across all segments
+ * Retry info: Shows failed attempts / total attempts for the last failing step
  */
 function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   if (apiEpisode.segments.length === 0) {
@@ -289,11 +290,10 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   let completedSegments = 0;
   let totalDuration = 0;
   let errorDetails: string | undefined;
-  let maxAttempts = 1;
-  let totalCurrentAttempts = 0;
-
-  // Find error from the last failing step's latest attempt
+  
+  // Find error and retry info from the last failing step
   let lastFailingSegmentError: string | undefined;
+  let lastFailingSegmentRetryInfo = { currentAttempt: 1, maxAttempts: 3 };
   
   for (const segment of apiEpisode.segments) {
     // Check if segment is completed - only if ANY attempt has success: true
@@ -304,7 +304,7 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
     if (hasSuccessfulAttempt) {
       completedSegments++;
     } else {
-      // This is a failing segment, get the latest attempt's error
+      // This is a failing segment, get retry info and error
       if (segment.attempts.length > 0) {
         // Get the latest attempt (highest number or last in array)
         const latestAttempt = segment.attempts.reduce((latest, current) => 
@@ -314,6 +314,18 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
         if (latestAttempt.error) {
           lastFailingSegmentError = latestAttempt.error;
         }
+        
+        // Calculate retry info for this failing segment
+        const failedAttempts = segment.attempts.filter(attempt => 
+          !attempt.success || attempt.error
+        ).length;
+        const totalAttempts = segment.attempts.length;
+        
+        // Update retry info to show failed/total for this segment
+        lastFailingSegmentRetryInfo = {
+          currentAttempt: failedAttempts,
+          maxAttempts: totalAttempts
+        };
       }
     }
 
@@ -325,10 +337,6 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
         const attemptDuration = endTime - startTime; // Duration in milliseconds
         totalDuration += attemptDuration;
       }
-      
-      // Track retry info
-      maxAttempts = Math.max(maxAttempts, attempt.number);
-      totalCurrentAttempts += attempt.number;
     }
   }
 
@@ -337,19 +345,13 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
 
   // Calculate progress percentage
   const progress = totalSegments > 0 ? Math.round((completedSegments / totalSegments) * 100) : 100;
-  
-  // Calculate average current attempt
-  const avgCurrentAttempt = totalSegments > 0 ? Math.ceil(totalCurrentAttempts / totalSegments) : 1;
 
   return {
     duration: totalDuration,
     progress,
     steps: { completed: completedSegments, total: totalSegments },
     errorDetails,
-    retryInfo: { 
-      currentAttempt: avgCurrentAttempt, 
-      maxAttempts: Math.max(maxAttempts, 3) // Default to at least 3
-    }
+    retryInfo: lastFailingSegmentRetryInfo
   };
 }
 
