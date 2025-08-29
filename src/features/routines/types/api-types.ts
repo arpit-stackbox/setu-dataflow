@@ -270,6 +270,7 @@ export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?:
 
 /**
  * Calculate episode metrics from API episode data
+ * Progress calculation: A segment/step is considered completed only if ANY attempt has success: true
  */
 function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   if (apiEpisode.segments.length === 0) {
@@ -290,14 +291,12 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   let totalCurrentAttempts = 0;
 
   for (const segment of apiEpisode.segments) {
-    // Check if segment is completed (has successful attempt or all attempts failed)
+    // Check if segment is completed - only if ANY attempt has success: true
     const hasSuccessfulAttempt = segment.attempts.some(attempt => 
-      attempt.success && !attempt.error
+      attempt.success === true
     );
-    const hasOnlyFailedAttempts = segment.attempts.length > 0 && 
-      segment.attempts.every(attempt => !attempt.success || attempt.error);
     
-    if (hasSuccessfulAttempt || hasOnlyFailedAttempts) {
+    if (hasSuccessfulAttempt) {
       completedSegments++;
     }
 
