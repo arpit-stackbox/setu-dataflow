@@ -271,6 +271,7 @@ export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?:
 /**
  * Calculate episode metrics from API episode data
  * Progress calculation: A segment/step is considered completed only if ANY attempt has success: true
+ * Error details: Shows error from the last failing step's latest attempt
  */
 function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   if (apiEpisode.segments.length === 0) {
@@ -290,6 +291,9 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   let maxAttempts = 1;
   let totalCurrentAttempts = 0;
 
+  // Find error from the last failing step's latest attempt
+  let lastFailingSegmentError: string | undefined;
+  
   for (const segment of apiEpisode.segments) {
     // Check if segment is completed - only if ANY attempt has success: true
     const hasSuccessfulAttempt = segment.attempts.some(attempt => 
@@ -298,6 +302,18 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
     
     if (hasSuccessfulAttempt) {
       completedSegments++;
+    } else {
+      // This is a failing segment, get the latest attempt's error
+      if (segment.attempts.length > 0) {
+        // Get the latest attempt (highest number or last in array)
+        const latestAttempt = segment.attempts.reduce((latest, current) => 
+          current.number > latest.number ? current : latest
+        );
+        
+        if (latestAttempt.error) {
+          lastFailingSegmentError = latestAttempt.error;
+        }
+      }
     }
 
     // Calculate duration for this segment
@@ -311,13 +327,11 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
       // Track retry info
       maxAttempts = Math.max(maxAttempts, attempt.number);
       totalCurrentAttempts += attempt.number;
-      
-      // Collect error details
-      if (attempt.error && !errorDetails) {
-        errorDetails = attempt.error;
-      }
     }
   }
+
+  // Use the last failing segment's error as the error details
+  errorDetails = lastFailingSegmentError;
 
   // Calculate progress percentage
   const progress = totalSegments > 0 ? Math.round((completedSegments / totalSegments) * 100) : 100;
