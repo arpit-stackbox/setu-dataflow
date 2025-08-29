@@ -5,6 +5,8 @@
 
 export interface Episode {
   id: string;
+  title?: string | null;
+  fallbackTitle?: string;
   status: 'Success' | 'Failed' | 'Running' | 'Warning';
   startTime: string;
   endTime?: string;

@@ -11,6 +11,7 @@ import {
   formatDurationWithStatus,
   formatRetryInfo,
   formatDateTime,
+  formatEpisodeTitle,
 } from "@/lib/episode-utils";
 import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
@@ -69,7 +70,9 @@ export function EpisodeTableRow({
         {/* Episode Column */}
         <TableCell className="py-3 lg:py-4">
           <div className="space-y-1">
-            <div className="font-medium text-blue-600">#{episode.id}</div>
+            <div className="font-medium text-blue-600">
+              {formatEpisodeTitle(episode)}
+            </div>
             <div className="text-xs text-gray-500">
               {formatDateTime(episode.startTime)}
             </div>

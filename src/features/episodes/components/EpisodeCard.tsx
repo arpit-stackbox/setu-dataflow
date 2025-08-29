@@ -10,6 +10,7 @@ import {
   formatDurationWithStatus,
   formatRetryInfo,
   formatDateTime,
+  formatEpisodeTitle,
 } from "@/lib/episode-utils";
 import { ProgressBar } from "./ProgressBar";
 import { ExecutionProgressCard } from "./ExecutionProgressCard";
@@ -46,7 +47,7 @@ export function EpisodeCard({ episode, onOpenModal }: EpisodeCardProps) {
         <div className="flex items-start justify-between">
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium text-gray-900">
-              Episode {episode.id}
+              {formatEpisodeTitle(episode)}
             </h3>
             <p className="text-xs text-gray-500 mt-1">
               {formatDateTime(episode.startTime)}

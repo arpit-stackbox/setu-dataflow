@@ -45,3 +45,22 @@ export const formatDurationWithStatus = (episode: Episode): string => {
 export const formatRetryInfo = (retryInfo: Episode["retryInfo"]): string => {
   return `${retryInfo.currentAttempt}/${retryInfo.maxAttempts}`;
 };
+
+/**
+ * Format episode title with fallback logic
+ * Priority: title → fallback_title → last 6 characters of ID
+ */
+export const formatEpisodeTitle = (episode: Episode): string => {
+  // First priority: title
+  if (episode.title && episode.title.trim()) {
+    return episode.title;
+  }
+  
+  // Second priority: fallback_title
+  if (episode.fallbackTitle && episode.fallbackTitle.trim()) {
+    return episode.fallbackTitle;
+  }
+  
+  // Final fallback: last 6 characters of ID
+  return `#${episode.id.slice(-6)}`;
+};

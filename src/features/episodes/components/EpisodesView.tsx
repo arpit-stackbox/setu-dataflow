@@ -8,6 +8,7 @@ import { EpisodesTable } from "./EpisodesTable";
 import { EpisodeSearchAndFilter } from "./EpisodeSearchAndFilter";
 import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
 import { DEFAULT_EPISODES_PER_PAGE } from "@/lib/constants";
+import { formatEpisodeTitle } from "@/lib/episode-utils";
 
 interface EpisodesViewProps {
   initialData: EpisodesResponse;
@@ -51,6 +52,9 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
       const matchesSearch =
         searchQuery === "" ||
         episode.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatEpisodeTitle(episode)
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
         episode.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
         episode.errorDetails?.toLowerCase().includes(searchQuery.toLowerCase());
 

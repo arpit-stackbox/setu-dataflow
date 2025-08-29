@@ -8,6 +8,7 @@ import { useFileSelection } from "../../hooks/useFileSelection";
 import { downloadFiles } from "../../utils/fileUtils";
 import { ModalBackdrop, ModalHeader, ModalContent, ModalFooter } from "./Modal";
 import { FileSelectionSection } from "./FileSelectionSection";
+import { formatEpisodeTitle } from "@/lib/episode-utils";
 
 interface PayloadDownloadModalProps {
   episode: Episode;
@@ -45,7 +46,7 @@ export function PayloadDownloadModal({
     onClose();
   };
 
-  const modalTitle = `Episode #${episode.id} Payload`;
+  const modalTitle = `${formatEpisodeTitle(episode)} Payload`;
 
   if (!isOpen) return null;
 
