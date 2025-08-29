@@ -10,7 +10,7 @@ interface RetryInfoCardProps {
  * Used in expandable episode rows for both desktop and mobile views
  */
 export function RetryInfoCard({ episode }: RetryInfoCardProps) {
-  if (episode.status !== "Failed" || !episode.retryInfo) {
+  if (episode.state !== "failed" || !episode.retryInfo) {
     return null;
   }
 

@@ -81,8 +81,8 @@ export function EpisodeTableRow({
 
         {/* Status Column */}
         <TableCell className="py-3 lg:py-4">
-          <Badge className={getStatusBadge(episode.status)}>
-            {episode.status}
+          <Badge className={getStatusBadge(episode.state)}>
+            {episode.state}
           </Badge>
         </TableCell>
 

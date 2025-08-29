@@ -55,12 +55,12 @@ export function EpisodesView({ initialData, routineInfo }: EpisodesViewProps) {
         formatEpisodeTitle(episode)
           .toLowerCase()
           .includes(searchQuery.toLowerCase()) ||
-        episode.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        episode.state.toLowerCase().includes(searchQuery.toLowerCase()) ||
         episode.errorDetails?.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
       const matchesStatus =
-        selectedType === "All Types" || episode.status === selectedType;
+        selectedType === "All Types" || episode.state === selectedType;
 
       // Date range filter
       const episodeDate = new Date(episode.startTime);

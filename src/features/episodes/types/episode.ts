@@ -7,6 +7,7 @@ export interface Episode {
   id: string;
   title?: string | null;
   fallbackTitle?: string;
+  state: string; // Original state from API (e.g., "failed", "success", "running", etc.)
   status: 'Success' | 'Failed' | 'Running' | 'Warning';
   startTime: string;
   endTime?: string;

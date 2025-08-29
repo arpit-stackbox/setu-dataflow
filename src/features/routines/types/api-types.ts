@@ -253,6 +253,7 @@ export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?:
     id: apiEpisode.id,
     title: apiEpisode.title,
     fallbackTitle: apiEpisode.fallback_title,
+    state: apiEpisode.state,
     status: episodeStatus.status,
     startTime: apiEpisode.created_at,
     endTime,

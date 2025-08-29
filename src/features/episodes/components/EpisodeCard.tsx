@@ -54,8 +54,8 @@ export function EpisodeCard({ episode, onOpenModal }: EpisodeCardProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={getStatusBadge(episode.status)}>
-              {episode.status}
+            <Badge className={getStatusBadge(episode.state)}>
+              {episode.state}
             </Badge>
             <Button
               variant="ghost"
