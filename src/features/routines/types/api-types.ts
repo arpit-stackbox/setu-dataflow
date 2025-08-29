@@ -272,6 +272,7 @@ export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?:
  * Calculate episode metrics from API episode data
  * Progress calculation: A segment/step is considered completed only if ANY attempt has success: true
  * Error details: Shows error from the last failing step's latest attempt
+ * Duration calculation: Sum of all attempt durations (settled_at - started_at) across all segments
  */
 function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
   if (apiEpisode.segments.length === 0) {
@@ -316,12 +317,13 @@ function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
       }
     }
 
-    // Calculate duration for this segment
+    // Calculate duration for this segment - sum all attempt durations
     for (const attempt of segment.attempts) {
       if (attempt.started_at && attempt.settled_at) {
         const startTime = new Date(attempt.started_at).getTime();
         const endTime = new Date(attempt.settled_at).getTime();
-        totalDuration += endTime - startTime;
+        const attemptDuration = endTime - startTime; // Duration in milliseconds
+        totalDuration += attemptDuration;
       }
       
       // Track retry info
