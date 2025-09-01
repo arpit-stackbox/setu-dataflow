@@ -9,7 +9,7 @@ import { EpisodeSearchAndFilter } from "./EpisodeSearchAndFilter";
 import { CompactPaginationComponent } from "@/components/layout/CompactPaginationComponent";
 import { DEFAULT_EPISODES_PER_PAGE } from "@/lib/constants";
 import { episodesApiClient } from "../api/episodes-client";
-import { mapApiEpisodeToEpisode } from "@/features/routines/types/api-types";
+import { mapApiEpisodeToEpisode } from "../types/api-types";
 import { Episode } from "../types/episode";
 
 interface EpisodesViewProps {

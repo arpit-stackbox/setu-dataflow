@@ -5,8 +5,7 @@ import {
   EpisodesView,
   EpisodesLoadingSkeleton,
 } from "@/features/episodes";
-import { routinesApiClient } from "@/features/routines/api/routines-client";
-import { mapApiEpisodeToEpisode } from "@/features/routines/types/api-types";
+import { mapApiEpisodeToEpisode } from "@/features/episodes/types/api-types";
 
 interface EpisodePageProps {
   params: Promise<{

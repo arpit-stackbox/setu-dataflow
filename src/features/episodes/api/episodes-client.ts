@@ -1,6 +1,6 @@
 import { apiConfig } from '@/config/api';
-import { isEpisodeFailed } from '@/features/routines/types/api-types';
-import type { ApiEpisodeItem } from '@/features/routines/types/api-types';
+import { isEpisodeFailed } from '../types/api-types';
+import type { ApiEpisodeItem } from '../types/api-types';
 
 /**
  * Episodes API Client

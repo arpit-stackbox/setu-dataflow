@@ -7,7 +7,35 @@ import { mockRoutines } from '@/__mocks__/mock-routines';
 import { apiConfig } from '@/config/api';
 import { routinesApiClient } from './routines-client';
 import { mapApiRoutineToRoutine } from '../types/api-types';
+import { getEpisodeStatus } from '@/features/episodes/types/api-types';
+import type { ApiEpisodeItem } from '@/features/episodes/types/api-types';
+import type { ApiRoutineItem } from '../types/api-types';
 import { RoutinesFilters, RoutinesResponse } from './types';
+
+/**
+ * Helper function to map API routine with proper episode status handling
+ */
+function mapApiRoutineToRoutineWithEpisodeStatus(
+  apiRoutine: ApiRoutineItem, 
+  latestEpisode: ApiEpisodeItem | undefined, 
+  failedEpisodesCount: number
+) {
+  // Get episode info with proper status calculation
+  const episodeInfo = latestEpisode ? getEpisodeStatus(latestEpisode) : null;
+  
+  // Use the basic mapping but override episode info
+  const routine = mapApiRoutineToRoutine(apiRoutine, undefined, failedEpisodesCount);
+  
+  if (episodeInfo) {
+    routine.lastEpisode = {
+      timestamp: episodeInfo.timestamp,
+      status: episodeInfo.status,
+    };
+    routine.lastRun = episodeInfo.timestamp;
+  }
+  
+  return routine;
+}
 
 /**
  * Fetch routines with server-side filtering and pagination
@@ -44,7 +72,7 @@ export async function getRoutines(filters: RoutinesFilters = {}): Promise<Routin
       const routinesWithEpisodes = apiResponse.data.map(apiRoutine => {
         const latestEpisode = episodeMap.get(apiRoutine.id);
         const failedEpisodesCount = failedCountsMap.get(apiRoutine.id) || 0;
-        return mapApiRoutineToRoutine(apiRoutine, latestEpisode, failedEpisodesCount);
+        return mapApiRoutineToRoutineWithEpisodeStatus(apiRoutine, latestEpisode, failedEpisodesCount);
       });
 
       // Step 4: For server-side pagination, return all routines from the page

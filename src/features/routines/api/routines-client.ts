@@ -4,7 +4,8 @@
  */
 
 import { apiConfig } from '@/config/api';
-import { RoutinesApiServiceResponse, RoutinesApiResponse, EpisodesApiResponse, ApiEpisodeItem } from '../types/api-types';
+import { RoutinesApiServiceResponse, RoutinesApiResponse } from '../types/api-types';
+import { EpisodesApiResponse, ApiEpisodeItem } from '@/features/episodes/types/api-types';
 import { episodesApiClient } from '@/features/episodes/api/episodes-client';
 
 export class RoutinesApiClient {

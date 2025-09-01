@@ -1,11 +1,19 @@
 /**
- * API Response Types for Routines
+ * Routine API Types and Utilities
+ * 
+ * Contains routine-specific API types, mapping functions, and type derivation utilities
  */
 
 import { Routine, RoutineType, RoutineStatus } from './routine';
-import { Episode } from '@/features/episodes/types/episode';
+import { ApiEpisodeItem } from '@/features/episodes/types/api-types';
 
-// API Response types (based on actual API structure)
+// =============================================================================
+// Routine API Types
+// =============================================================================
+
+/**
+ * Raw routine data from API
+ */
 export interface ApiRoutineItem {
   id: string;
   title: string;
@@ -22,64 +30,11 @@ export interface ApiRoutineItem {
   deleted_at: string | null;
 }
 
-// Episode API types
-export interface ApiEpisodeAttempt {
-  number: number;
-  error: string | null;
-  file_size: number;
-  timeout_at: string;
-  trace: string | null;
-  file_type: string;
-  backoff_at: string | null;
-  cause: string | null;
-  file_name: string | null;
-  started_at: string;
-  retry_state: string;
-  created_at: string;
-  id: string;
-  settled_at: string;
-  storage_id: string;
-  retried_at: string | null;
-  file_id: string;
-  task_id: string;
-  success: boolean;
-  file_count_rows: number;
-  file_count_cols: number;
-}
-
-export interface ApiEpisodeSegment {
-  id: string;
-  number: number;
-  type: string;
-  attempts: ApiEpisodeAttempt[];
-  created_at: string;
-  storage_id: string;
-  args: unknown | null;
-  crux: Record<string, unknown>;
-  latest_attempt_count_rows: number | null;
-  fallback_title: string;
-}
-
-export interface ApiEpisodeItem {
-  id: string;
-  number: number | null;
-  created_at: string;
-  routine_id: string;
-  title: string | null;
-  deleted_at: string | null;
-  args: Record<string, unknown>;
-  crux: Record<string, unknown>;
-  segments: ApiEpisodeSegment[];
-  state: string; // Episode state from API (e.g., "failed", "success", "running", etc.)
-  fallback_title?: string; // Optional fallback title
-}
-
-export type EpisodesApiResponse = ApiEpisodeItem[];
-
-// API returns array directly
 export type RoutinesApiResponse = ApiRoutineItem[];
 
-// Enhanced API service response with headers
+/**
+ * Enhanced API service response with metadata
+ */
 export interface RoutinesApiServiceResponse {
   data: ApiRoutineItem[];
   totalCount: number;
@@ -87,8 +42,14 @@ export interface RoutinesApiServiceResponse {
   limit: number;
 }
 
-// Default values for missing fields
-const DEFAULT_VALUES = {
+// =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Default values for fields missing from API responses
+ */
+export const DEFAULT_VALUES = {
   sender: 'System',
   receiver: 'Processing Node',
   lastEpisodeStatus: 'Success' as RoutineStatus,
@@ -97,70 +58,90 @@ const DEFAULT_VALUES = {
   createdBy: 'System',
 } as const;
 
-/**
- * Get episode status from API state field
- * Now uses the direct state field from the API response instead of complex logic
- */
-function getEpisodeStatus(episode: ApiEpisodeItem): {
-  status: RoutineStatus;
-  timestamp: string;
-  hasErrors: boolean;
-} {
-  // Map API state to our RoutineStatus type
-  let status: RoutineStatus;
-  let hasErrors = false;
+// =============================================================================
+// Routine Type Derivation
+// =============================================================================
 
-  switch (episode.state?.toLowerCase()) {
-    case 'success':
-    case 'completed':
-      status = 'Success';
-      break;
-    case 'failed':
-    case 'error':
-      status = 'Failed';
-      hasErrors = true;
-      break;
-    case 'running':
-    case 'executing':
-    case 'in_progress':
-      status = 'Running';
-      break;
-    case 'warning':
-    case 'partial':
-      status = 'Warning';
-      hasErrors = true;
-      break;
-    default:
-      // Fallback to the old logic if state is not recognized
-      status = 'Warning';
-      console.warn(`Unknown episode state: ${episode.state}`);
+/**
+ * Derives routine type from API routine data
+ */
+export function deriveRoutineType(apiRoutine: ApiRoutineItem): RoutineType {
+  // Check permission-based type first
+  if (apiRoutine.permission) {
+    const permission = apiRoutine.permission.toLowerCase();
+    
+    const typeMap: Array<[string[], RoutineType]> = [
+      [['orchestration', 'orchestra'], 'Orchestration'],
+      [['integration', 'integrate'], 'Integration'],
+      [['app', 'extension'], 'App Extension'],
+      [['communication', 'comm', 'message'], 'Communication'],
+    ];
+
+    for (const [keywords, type] of typeMap) {
+      if (keywords.some(keyword => permission.includes(keyword))) {
+        return type;
+      }
+    }
+    
+    return 'App Extension'; // Default for permission-based
   }
-
-  return {
-    status,
-    timestamp: episode.created_at,
-    hasErrors,
-  };
+  
+  // Check schedule-based type
+  if (apiRoutine.schedule?.trim()) {
+    return 'Orchestration';
+  }
+  
+  // Check awaited flag
+  if (apiRoutine.awaited) {
+    return 'Integration';
+  }
+  
+  return 'App Extension'; // Final fallback
 }
 
 /**
- * Determines if an episode is failed using the direct state field
- * Much simpler than the previous segment analysis approach
+ * Generates a description from API routine data
  */
-export function isEpisodeFailed(episode: ApiEpisodeItem): boolean {
-  const state = episode.state?.toLowerCase();
-  return state === 'failed' || state === 'error';
+export function generateDescription(apiRoutine: ApiRoutineItem): string {
+  if (apiRoutine.schedule?.trim()) {
+    return `Scheduled: ${apiRoutine.schedule}`;
+  }
+  
+  if (apiRoutine.awaited) {
+    return 'Awaited execution routine';
+  }
+  
+  if (apiRoutine.permission) {
+    return `Permission-controlled routine (${apiRoutine.permission})`;
+  }
+  
+  return 'Manual execution routine';
 }
 
+// =============================================================================
+// Routine Mapping Function
+// =============================================================================
+
 /**
- * Maps API routine item to internal Routine type
+ * Maps API routine to internal Routine type
  */
 export function mapApiRoutineToRoutine(
   apiRoutine: ApiRoutineItem, 
   latestEpisode?: ApiEpisodeItem, 
   failedEpisodesLast7Days?: number
 ): Routine {
-  const episodeInfo = latestEpisode ? getEpisodeStatus(latestEpisode) : null;
+  let episodeInfo = null;
+  
+  if (latestEpisode) {
+    // Dynamic import to avoid circular dependency
+    // This is a runtime import, so we can't use the function directly here
+    // Instead, we'll handle this at the call site where needed
+    episodeInfo = {
+      status: 'Warning' as RoutineStatus,
+      timestamp: latestEpisode.created_at,
+      hasErrors: false
+    };
+  }
 
   return {
     id: apiRoutine.id,
@@ -180,203 +161,9 @@ export function mapApiRoutineToRoutine(
   };
 }
 
-/**
- * Generates description from API data
- */
-function generateDescription(apiRoutine: ApiRoutineItem): string {
-  if (apiRoutine.schedule && apiRoutine.schedule.trim()) {
-    return `Scheduled: ${apiRoutine.schedule}`;
-  }
-  
-  if (apiRoutine.awaited) {
-    return 'Awaited execution routine';
-  }
-  
-  if (apiRoutine.permission) {
-    return `Permission-controlled routine (${apiRoutine.permission})`;
-  }
-  
-  return 'Manual execution routine';
-}
-
-/**
- * Derives routine type from API data
- */
-function deriveRoutineType(apiRoutine: ApiRoutineItem): RoutineType {
-  if (apiRoutine.permission) {
-    const permission = apiRoutine.permission.toLowerCase();
-    
-    if (permission.includes('orchestration') || permission.includes('orchestra')) {
-      return 'Orchestration';
-    }
-    
-    if (permission.includes('integration') || permission.includes('integrate')) {
-      return 'Integration';
-    }
-    
-    if (permission.includes('app') || permission.includes('extension')) {
-      return 'App Extension';
-    }
-    
-    if (permission.includes('communication') || permission.includes('comm') || permission.includes('message')) {
-      return 'Communication';
-    }
-    
-    return 'App Extension';
-  }
-  
-  if (apiRoutine.schedule && apiRoutine.schedule.trim()) {
-    return 'Orchestration';
-  }
-  
-  if (apiRoutine.awaited) {
-    return 'Integration';
-  }
-  
-  return 'App Extension';
-}
-
-/**
- * Maps API episode item to internal Episode type
- * Converts the complex API episode structure to the simplified UI episode format
- */
-export function mapApiEpisodeToEpisode(apiEpisode: ApiEpisodeItem, routineName?: string): Episode {
-  const episodeStatus = getEpisodeStatus(apiEpisode);
-  
-  // Calculate duration and progress from segments
-  const { duration, progress, steps, errorDetails, retryInfo } = calculateEpisodeMetrics(apiEpisode);
-  
-  // Determine end time
-  const endTime = calculateEndTime(apiEpisode);
-
-  return {
-    id: apiEpisode.id,
-    title: apiEpisode.title,
-    fallbackTitle: apiEpisode.fallback_title,
-    state: apiEpisode.state,
-    status: episodeStatus.status,
-    startTime: apiEpisode.created_at,
-    endTime,
-    duration,
-    progress,
-    steps,
-    errorDetails,
-    retryInfo,
-    routineId: apiEpisode.routine_id,
-    routineName: routineName || 'Unknown Routine',
-    // payloadFiles can be added later if needed
-  };
-}
-
-/**
- * Calculate episode metrics from API episode data
- * Progress calculation: A segment/step is considered completed only if ANY attempt has success: true
- * Error details: Shows error from the last failing step's latest attempt
- * Duration calculation: Sum of all attempt durations (settled_at - started_at) across all segments
- * Retry info: Shows failed attempts / total attempts for the last failing step
- */
-function calculateEpisodeMetrics(apiEpisode: ApiEpisodeItem) {
-  if (apiEpisode.segments.length === 0) {
-    return {
-      duration: 0,
-      progress: 100,
-      steps: { completed: 0, total: 0 },
-      errorDetails: undefined,
-      retryInfo: { currentAttempt: 1, maxAttempts: 3 }
-    };
-  }
-
-  const totalSegments = apiEpisode.segments.length;
-  let completedSegments = 0;
-  let totalDuration = 0;
-  let errorDetails: string | undefined;
-  
-  // Find error and retry info from the last failing step
-  let lastFailingSegmentError: string | undefined;
-  let lastFailingSegmentRetryInfo = { currentAttempt: 1, maxAttempts: 3 };
-  
-  for (const segment of apiEpisode.segments) {
-    // Check if segment is completed - only if ANY attempt has success: true
-    const hasSuccessfulAttempt = segment.attempts.some(attempt => 
-      attempt.success === true
-    );
-    
-    if (hasSuccessfulAttempt) {
-      completedSegments++;
-    } else {
-      // This is a failing segment, get retry info and error
-      if (segment.attempts.length > 0) {
-        // Get the latest attempt (highest number or last in array)
-        const latestAttempt = segment.attempts.reduce((latest, current) => 
-          current.number > latest.number ? current : latest
-        );
-        
-        if (latestAttempt.error) {
-          lastFailingSegmentError = latestAttempt.error;
-        }
-        
-        // Calculate retry info for this failing segment
-        const failedAttempts = segment.attempts.filter(attempt => 
-          !attempt.success || attempt.error
-        ).length;
-        const totalAttempts = segment.attempts.length;
-        
-        // Update retry info to show failed/total for this segment
-        lastFailingSegmentRetryInfo = {
-          currentAttempt: failedAttempts,
-          maxAttempts: totalAttempts
-        };
-      }
-    }
-
-    // Calculate duration for this segment - sum all attempt durations
-    for (const attempt of segment.attempts) {
-      if (attempt.started_at && attempt.settled_at) {
-        const startTime = new Date(attempt.started_at).getTime();
-        const endTime = new Date(attempt.settled_at).getTime();
-        const attemptDuration = endTime - startTime; // Duration in milliseconds
-        totalDuration += attemptDuration;
-      }
-    }
-  }
-
-  // Use the last failing segment's error as the error details
-  errorDetails = lastFailingSegmentError;
-
-  // Calculate progress percentage
-  const progress = totalSegments > 0 ? Math.round((completedSegments / totalSegments) * 100) : 100;
-
-  return {
-    duration: totalDuration,
-    progress,
-    steps: { completed: completedSegments, total: totalSegments },
-    errorDetails,
-    retryInfo: lastFailingSegmentRetryInfo
-  };
-}
-
-/**
- * Calculate end time from API episode data
- */
-function calculateEndTime(apiEpisode: ApiEpisodeItem): string | undefined {
-  if (apiEpisode.segments.length === 0) {
-    return apiEpisode.created_at;
-  }
-
-  let latestEndTime: string | undefined;
-
-  for (const segment of apiEpisode.segments) {
-    for (const attempt of segment.attempts) {
-      if (attempt.settled_at) {
-        if (!latestEndTime || attempt.settled_at > latestEndTime) {
-          latestEndTime = attempt.settled_at;
-        }
-      }
-    }
-  }
-
-  return latestEndTime;
-}
+// =============================================================================
+// API Parameter Mapping
+// =============================================================================
 
 /**
  * Maps internal filters to API query parameters
