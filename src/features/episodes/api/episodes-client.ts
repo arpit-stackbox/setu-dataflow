@@ -31,18 +31,22 @@ export class EpisodesApiClient {
   }> {
     const { 
       routineId, 
-      limit = 50, 
+      limit, 
       offset = 0, 
       reverse = true,
       recencyLimit,
     } = params;
     
     const searchParams = new URLSearchParams({
-      limit: String(limit),
       offset: String(offset),
       reverse: String(reverse),
       routine_id: routineId,
     });
+
+    // Only add limit if explicitly provided
+    if (limit !== undefined) {
+      searchParams.set('limit', String(limit));
+    }
 
     // Add recency limit only if provided (for failed episode counts)
     if (recencyLimit !== undefined) {
@@ -72,15 +76,11 @@ export class EpisodesApiClient {
                                response.headers.get('Total-Count') || '0';
       const totalCount = parseInt(totalCountHeader) || episodes.length;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Episodes API] GET ${url} → ${response.status} (${episodes.length} episodes, total: ${totalCount})`);
-      }
-
       return {
         episodes,
         totalCount,
         offset,
-        limit,
+        limit: limit ?? episodes.length, // Use actual episodes length if no limit was set
       };
     } catch (error) {
       console.error(`[Episodes API] Failed to fetch episodes for routine ${routineId}:`, error);
@@ -107,7 +107,7 @@ export class EpisodesApiClient {
     }
   }
 
-  /**
+    /**
    * Get failed episodes count for a routine in the last N days
    */
   async getFailedEpisodesCount(routineId: string, daysBack: number = 7): Promise<number> {
@@ -117,16 +117,21 @@ export class EpisodesApiClient {
       
       const result = await this.getEpisodesForRoutine({
         routineId,
-        limit: 1000, // Use high limit to get all episodes in the time period
         offset: 0,
         reverse: true,
-        recencyLimit, // This will now be properly applied to the API call
+        recencyLimit, // Only get episodes from last 7 days
       });
 
+      // Analyze episode states for debugging
+      const states = result.episodes.map(ep => ep.state).filter(Boolean);
+      const uniqueStates = [...new Set(states)];
+
       // Count failed episodes
-      const failedCount = result.episodes.filter(episode => 
-        isEpisodeFailed(episode)
-      ).length;
+      const failedEpisodes = result.episodes.filter(episode => {
+        return isEpisodeFailed(episode);
+      });
+
+      const failedCount = failedEpisodes.length;
 
       return failedCount;
     } catch (error) {
